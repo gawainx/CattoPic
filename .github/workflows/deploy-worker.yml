@@ -34,16 +34,6 @@ jobs:
         run: pnpm install
         working-directory: worker
 
-      - name: Check secrets exist
-        run: |
-          echo "CLOUDFLARE_API_TOKEN length: ${#CLOUDFLARE_API_TOKEN}"
-          echo "CLOUDFLARE_ACCOUNT_ID length: ${#CLOUDFLARE_ACCOUNT_ID}"
-          echo "WRANGLER_TOML length: ${#WRANGLER_TOML}"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          WRANGLER_TOML: ${{ secrets.WRANGLER_TOML }}
-
       - name: Generate wrangler.toml
         working-directory: worker
         env:
