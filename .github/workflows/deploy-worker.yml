@@ -34,9 +34,11 @@ jobs:
         run: pnpm install
         working-directory: worker
 
-      - name: Generate wrangler.toml from secret
-        run: echo "${{ secrets.WRANGLER_TOML }}" > wrangler.toml
+      - name: Generate wrangler.toml
         working-directory: worker
+        env:
+          WRANGLER_TOML_CONTENT: ${{ secrets.WRANGLER_TOML }}
+        run: printf '%s\n' "$WRANGLER_TOML_CONTENT" > wrangler.toml
 
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
@@ -44,3 +46,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
+          command: deploy
