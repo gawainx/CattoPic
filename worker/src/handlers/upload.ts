@@ -8,8 +8,8 @@ import { CompressionService, parseCompressionOptions } from '../services/compres
 import { successResponse, errorResponse } from '../utils/response';
 import { generateImageId, parseTags, parseNumber } from '../utils/validation';
 
-// Maximum file size: 100MB (Cloudflare Workers limit is 100MB for request body)
-const MAX_FILE_SIZE = 100 * 1024 * 1024;
+// Maximum file size: 70MB (Cloudflare Images Binding limit)
+const MAX_FILE_SIZE = 70 * 1024 * 1024;
 
 /**
  * Single file upload handler - processes one image with full parallelization

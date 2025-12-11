@@ -17,7 +17,7 @@ import { useInvalidateImages } from './hooks/useImages'
 import { useUploadState } from './hooks/useUploadState'
 import { UploadFileItem } from './types/upload'
 
-const DEFAULT_MAX_UPLOAD_COUNT = 20;
+const DEFAULT_MAX_UPLOAD_COUNT = 50;
 
 export default function Home() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
