@@ -18,6 +18,7 @@ import {
 import Header from "../components/Header";
 import ToastContainer from "../components/ToastContainer";
 import TagManagementModal from "../components/TagManagementModal";
+import RandomApiModal from "../components/RandomApiModal";
 import { ImageIcon, Spinner } from "../components/ui/icons";
 import { useInfiniteImages, useDeleteImage } from "../hooks/useImages";
 
@@ -25,6 +26,7 @@ export default function Manage() {
   useTheme();
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
+  const [showRandomApiModal, setShowRandomApiModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImageFile | null>(null);
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [filters, setFilters] = useState<ImageFilterState>({
@@ -152,6 +154,7 @@ export default function Manage() {
       <Header
         onApiKeyClick={() => setShowApiKeyModal(true)}
         onTagManageClick={() => setShowTagModal(true)}
+        onRandomApiClick={() => setShowRandomApiModal(true)}
         title="CattoPic"
         isKeyVerified={isKeyVerified}
       />
@@ -286,6 +289,11 @@ export default function Manage() {
       <TagManagementModal
         isOpen={showTagModal}
         onClose={handleTagModalClose}
+      />
+
+      <RandomApiModal
+        isOpen={showRandomApiModal}
+        onClose={() => setShowRandomApiModal(false)}
       />
 
       <ApiKeyModal

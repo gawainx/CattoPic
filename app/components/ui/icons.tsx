@@ -16,6 +16,7 @@ import {
   Clock as ClockIcon,
   Tags as TagIcon,
   Plus as PlusIcon,
+  Minus as MinusIcon,
   Info as InfoCircledIcon,
   Share as Share1Icon,
   ChevronDown as CaretDownIcon,
@@ -49,6 +50,7 @@ import {
   Star as StarFilledIcon,
   HelpCircle as QuestionMarkIcon,
   Link as Link1Icon,
+  Link2 as Link2Icon,
   CreditCard as IdCardIcon,
   // 新增图标用于不同格式
   Camera as CameraIcon,
@@ -67,6 +69,7 @@ export {
   ImageIcon, // 图片图标
   PlusCircledIcon, // 添加图标（带圆圈）
   PlusIcon, // 添加图标
+  MinusIcon, // 减号图标
   Cross1Icon, // 关闭/删除图标
   Cross2Icon, // 替代关闭图标
   DotsHorizontalIcon, // 更多操作图标
@@ -114,6 +117,7 @@ export {
   StarFilledIcon, // 实心星形图标
   QuestionMarkIcon, // 问号/帮助图标
   Link1Icon, // 链接图标
+  Link2Icon, // 链接图标（变体）
   IdCardIcon, // ID卡/身份图标
   // 新增的格式相关图标
   CameraIcon, // 相机图标 - 原始图片

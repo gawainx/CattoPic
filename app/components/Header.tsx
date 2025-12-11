@@ -4,16 +4,17 @@ import Link from 'next/link'
 import { useTheme } from '../hooks/useTheme'
 import { usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
-import { ImageIcon, HamburgerMenuIcon, LockClosedIcon, SunIcon, MoonIcon, TagIcon } from './ui/icons'
+import { ImageIcon, HamburgerMenuIcon, LockClosedIcon, SunIcon, MoonIcon, TagIcon, Link2Icon } from './ui/icons'
 
 interface HeaderProps {
   onApiKeyClick: () => void
   onTagManageClick?: () => void
+  onRandomApiClick?: () => void
   title?: string
   isKeyVerified?: boolean
 }
 
-export default function Header({ onApiKeyClick, onTagManageClick, title, isKeyVerified = false }: HeaderProps) {
+export default function Header({ onApiKeyClick, onTagManageClick, onRandomApiClick, title, isKeyVerified = false }: HeaderProps) {
   const { isDarkMode, toggleTheme } = useTheme()
   const pathname = usePathname()
 
@@ -37,15 +38,21 @@ export default function Header({ onApiKeyClick, onTagManageClick, title, isKeyVe
       </div>
 
       <div className="flex items-center space-x-2">
-        {pathname !== '/manage' && (
+        {!pathname?.startsWith('/manage') && (
           <Link href="/manage" className="btn-icon">
             <HamburgerMenuIcon className="h-6 w-6" />
           </Link>
         )}
 
-        {pathname === '/manage' && onTagManageClick && (
+        {pathname?.startsWith('/manage') && onTagManageClick && (
           <button onClick={onTagManageClick} className="btn-icon">
             <TagIcon className="h-6 w-6" />
+          </button>
+        )}
+
+        {pathname?.startsWith('/manage') && onRandomApiClick && (
+          <button onClick={onRandomApiClick} className="btn-icon" title="随机图API生成器">
+            <Link2Icon className="h-6 w-6" />
           </button>
         )}
 
