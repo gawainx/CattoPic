@@ -74,3 +74,18 @@ NEXT_PUBLIC_WORKER_URL=http://localhost:8787  # or production Worker URL
 
 ### Worker (wrangler.toml)
 Bindings: `R2_BUCKET` (R2), `DB` (D1), `IMAGES` (Cloudflare Images for compression)
+
+## Changelog
+
+**Important: When making functional changes to the codebase, you MUST update the changelog files.**
+
+- `CHANGELOG.md` - English version
+- `CHANGELOG_CN.md` - Chinese version
+
+Follow [Keep a Changelog](https://keepachangelog.com/) format with these sections:
+- `Added` - New features
+- `Changed` - Changes to existing functionality
+- `Deprecated` - Features to be removed
+- `Removed` - Removed features
+- `Fixed` - Bug fixes
+- `Security` - Security fixes
