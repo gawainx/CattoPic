@@ -46,7 +46,7 @@ export default function Home() {
 
   // 压缩设置状态
   const [compressionQuality, setCompressionQuality] = useState(90)
-  const [compressionMaxWidth, setCompressionMaxWidth] = useState(3840)
+  const [compressionMaxWidth, setCompressionMaxWidth] = useState(0)
   const [preserveAnimation, setPreserveAnimation] = useState(true)
   const [outputFormat, setOutputFormat] = useState<'webp' | 'avif' | 'both'>('both')
 

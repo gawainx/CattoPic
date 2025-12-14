@@ -60,6 +60,7 @@ export async function concurrentUpload(options: ConcurrentUploadOptions): Promis
       formData.append('expiryMinutes', expiryMinutes.toString())
       formData.append('quality', quality.toString())
       formData.append('maxWidth', maxWidth.toString())
+      formData.append('maxHeight', maxWidth.toString())
       formData.append('preserveAnimation', preserveAnimation.toString())
       formData.append('generateWebp', (outputFormat === 'webp' || outputFormat === 'both').toString())
       formData.append('generateAvif', (outputFormat === 'avif' || outputFormat === 'both').toString())

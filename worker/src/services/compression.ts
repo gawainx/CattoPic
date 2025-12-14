@@ -9,8 +9,8 @@ import { ImageProcessor } from './imageProcessor';
 
 const DEFAULT_OPTIONS: Required<CompressionOptions> = {
   quality: 90,
-  maxWidth: 3840,
-  maxHeight: 3840,
+  maxWidth: 0,
+  maxHeight: 0,
   preserveAnimation: true,
   generateWebp: true,
   generateAvif: true,
@@ -91,20 +91,19 @@ export class CompressionService {
     // Get original dimensions
     const { width, height } = await ImageProcessor.getImageDimensions(data);
 
-    // Calculate target dimensions
-    const targetDims = this.calculateDimensions(
-      width,
-      height,
-      opts.maxWidth,
-      opts.maxHeight
-    );
+    const hasResizeLimit = opts.maxWidth > 0 && opts.maxHeight > 0;
+    const targetDims = hasResizeLimit
+      ? this.calculateDimensions(width, height, opts.maxWidth, opts.maxHeight)
+      : undefined;
 
     // AVIF dimensions (with 1600px max while preserving aspect ratio)
+    const avifMaxWidth = opts.maxWidth > 0 ? Math.min(opts.maxWidth, 1600) : 1600;
+    const avifMaxHeight = opts.maxHeight > 0 ? Math.min(opts.maxHeight, 1600) : 1600;
     const avifDims = this.calculateDimensions(
       width,
       height,
-      Math.min(opts.maxWidth, 1600),
-      Math.min(opts.maxHeight, 1600)
+      avifMaxWidth,
+      avifMaxHeight
     );
 
     // Generate WebP first; AVIF is more failure-prone, so run after WebP to reduce concurrent load.
@@ -137,17 +136,22 @@ export class CompressionService {
     data: ArrayBuffer,
     format: 'image/webp' | 'image/avif',
     quality: number,
-    dimensions: { width: number; height: number }
+    dimensions?: { width: number; height: number }
   ): Promise<CompressedImage> {
     const transformer = this.images.input(data);
 
-    const output = await transformer
-      .transform({
-        width: dimensions.width,
-        height: dimensions.height,
-        fit: 'scale-down',
-      })
-      .output({
+    const output = dimensions
+      ? await transformer
+        .transform({
+          width: dimensions.width,
+          height: dimensions.height,
+          fit: 'scale-down',
+        })
+        .output({
+          format,
+          quality,
+        })
+      : await transformer.output({
         format,
         quality,
       });

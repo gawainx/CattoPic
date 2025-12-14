@@ -23,6 +23,7 @@ const QUALITY_PRESETS = [
 ]
 
 const DIMENSION_PRESETS = [
+  { value: 0, label: '原图', description: '不限制' },
   { value: 3840, label: '4K', description: '3840px' },
   { value: 2560, label: '2K', description: '2560px' },
   { value: 1920, label: 'FHD', description: '1920px' },
@@ -57,7 +58,7 @@ const CompressionSettings = React.memo(function CompressionSettings({
           <GearIcon className="w-4 h-4" />
           <span>压缩设置</span>
           <span className="text-xs text-slate-400 dark:text-slate-500">
-            (输出: {outputFormat.toUpperCase()}, 质量: {quality}%, 最大: {maxWidth}px)
+            (输出: {outputFormat.toUpperCase()}, 质量: {quality}%, 最大: {maxWidth > 0 ? `${maxWidth}px` : '原图'})
           </span>
         </div>
         <motion.div
@@ -181,7 +182,7 @@ const CompressionSettings = React.memo(function CompressionSettings({
               <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg p-3">
                 <p>JPEG/PNG 等格式将按所选输出生成压缩版本。</p>
                 <p className="mt-1">上传本身为 WebP/AVIF/GIF 时不会再二次压缩。</p>
-                <p className="mt-1">AVIF 最大支持 1600px 尺寸。</p>
+                <p className="mt-1">选择“原图”表示不做尺寸缩放（AVIF 在 Cloudflare 上可能仍受尺寸限制）。</p>
               </div>
             </div>
           </motion.div>
