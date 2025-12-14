@@ -13,9 +13,8 @@ import PreviewSidebar from './components/upload/PreviewSidebar'
 import CompressionSettings from './components/upload/CompressionSettings'
 import { motion } from 'motion/react'
 import { ImageIcon, PlusCircledIcon } from './components/ui/icons'
-import { useInvalidateImages } from './hooks/useImages'
+import { useDeleteImage, useInvalidateImages } from './hooks/useImages'
 import { useUploadState } from './hooks/useUploadState'
-import { UploadFileItem } from './types/upload'
 import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { queryKeys } from './lib/queryKeys'
 
@@ -36,6 +35,7 @@ export default function Home() {
   // TanStack Query cache invalidation hook
   const invalidateImages = useInvalidateImages()
   const queryClient = useQueryClient()
+  const deleteImageMutation = useDeleteImage()
 
   // 上传状态管理
   const uploadState = useUploadState()
@@ -374,40 +374,25 @@ export default function Home() {
 
   const handleDeleteImage = async (id: string) => {
     try {
-      const image = uploadResults.find((img) => img.id === id);
-      if (!image) return;
+      await deleteImageMutation.mutateAsync(id);
 
-      // 使用图片的 ID 直接删除
-      const imageId = image.id;
-
-      const response = await api.delete<{ success: boolean; message: string }>(
-        `/api/images/${imageId}`
-      );
-
-      if (response.success) {
-        // From current list remove the deleted image
-        setUploadResults(prev => prev.filter(item => item.id !== id));
-
-        // If after deletion no images are left, close the sidebar
-        if (uploadResults.length <= 1) {
+      setUploadResults((prev) => {
+        const next = prev.filter((item) => item.id !== id);
+        if (next.length === 0) {
           setShowResultSidebar(false);
         }
+        return next;
+      });
 
-        setStatus({
-          type: 'success',
-          message: response.message || '删除成功'
-        });
-      } else {
-        setStatus({
-          type: 'error',
-          message: '删除失败'
-        });
-      }
+      setStatus({
+        type: 'success',
+        message: '图片已删除'
+      });
     } catch (error) {
       console.error('删除失败:', error);
       setStatus({
         type: 'error',
-        message: '删除失败，请重试'
+        message: error instanceof Error ? `删除失败：${error.message}` : '删除失败，请重试'
       });
     }
   }

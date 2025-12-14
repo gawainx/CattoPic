@@ -14,3 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Real-time extraction and upload progress display
   - Unified tag setting for all images
   - Auto-skip non-image files and files over 70MB
+
+### Fixed
+
+- Fix deleted images not disappearing from Upload/Manage pages without a hard refresh (TanStack Query cache + recent uploads list).

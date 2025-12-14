@@ -143,7 +143,6 @@ export function useInfiniteImages(options: UseImagesOptions = {}) {
       const total = Math.max(data.pages[0].total || 0, (data.pages[0].total || 0) + missing.length);
       const totalPages = Math.max(1, Math.ceil(total / limit));
 
-      const firstPage = data.pages[0];
       const filteredPages = data.pages.map((p) => ({
         ...p,
         images: p.images.filter((img) => matchesFilters(img, tag, orientation, format)),
@@ -273,46 +272,102 @@ export function useDeleteImage() {
       if (!response.success) {
         throw new Error(response.message || 'Failed to delete image');
       }
-      return id;
+      return { id, message: response.message };
     },
     onMutate: async (id) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: queryKeys.images.lists() });
 
-      // Snapshot the previous value
-      const previousData = queryClient.getQueriesData<InfiniteData<ImageListResponse>>({
+      const previousLists = queryClient.getQueriesData({
         queryKey: queryKeys.images.lists(),
       });
-
-      // Optimistically update: remove the image from all cached lists
-      queryClient.setQueriesData<InfiniteData<ImageListResponse>>(
-        { queryKey: queryKeys.images.lists() },
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              images: page.images.filter((img) => img.id !== id),
-              total: page.total - 1,
-            })),
-          };
-        }
+      const previousRecentUploads = queryClient.getQueryData<ImageFile[]>(
+        queryKeys.images.recentUploads()
       );
 
-      return { previousData };
+      queryClient.setQueryData<ImageFile[]>(queryKeys.images.recentUploads(), (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((img) => img.id !== id);
+      });
+
+      const isInfiniteImageList = (value: unknown): value is InfiniteData<ImageListResponse> => {
+        return !!value
+          && typeof value === 'object'
+          && 'pages' in value
+          && Array.isArray((value as { pages: unknown }).pages)
+          && 'pageParams' in value
+          && Array.isArray((value as { pageParams: unknown }).pageParams);
+      };
+
+      const isImageListResponse = (value: unknown): value is ImageListResponse => {
+        return !!value
+          && typeof value === 'object'
+          && 'images' in value
+          && Array.isArray((value as { images: unknown }).images)
+          && 'page' in value
+          && 'total' in value
+          && 'totalPages' in value;
+      };
+
+      for (const [queryKey, data] of previousLists) {
+        if (!data || !Array.isArray(queryKey) || queryKey.length < 3) continue;
+
+        const filters = queryKey[2] as { limit?: number } | undefined;
+        const limit = typeof filters?.limit === 'number' ? filters.limit : undefined;
+
+        if (isInfiniteImageList(data)) {
+          const hadImage = data.pages.some((p) => p.images.some((img) => img.id === id));
+          if (!hadImage) continue;
+
+          const firstPage = data.pages[0];
+          const nextTotal = Math.max(0, (firstPage.total || 0) - 1);
+          const nextTotalPages = limit ? Math.max(1, Math.ceil(nextTotal / limit)) : firstPage.totalPages;
+
+          queryClient.setQueryData<InfiniteData<ImageListResponse>>(queryKey, {
+            ...data,
+            pages: data.pages.map((p) => ({
+              ...p,
+              images: p.images.filter((img) => img.id !== id),
+              total: nextTotal,
+              totalPages: nextTotalPages,
+            })),
+          });
+          continue;
+        }
+
+        if (isImageListResponse(data)) {
+          const hadImage = data.images.some((img) => img.id === id);
+          if (!hadImage) continue;
+
+          const nextTotal = Math.max(0, (data.total || 0) - 1);
+          const nextTotalPages = limit ? Math.max(1, Math.ceil(nextTotal / limit)) : data.totalPages;
+
+          queryClient.setQueryData<ImageListResponse>(queryKey, {
+            ...data,
+            images: data.images.filter((img) => img.id !== id),
+            total: nextTotal,
+            totalPages: nextTotalPages,
+          });
+        }
+      }
+
+      queryClient.removeQueries({ queryKey: queryKeys.images.detail(id) });
+
+      return { previousLists, previousRecentUploads };
     },
     onError: (_err, _id, context) => {
       // Rollback on error
-      if (context?.previousData) {
-        for (const [queryKey, data] of context.previousData) {
+      if (context?.previousLists) {
+        for (const [queryKey, data] of context.previousLists) {
           queryClient.setQueryData(queryKey, data);
         }
       }
+      if (context?.previousRecentUploads !== undefined) {
+        queryClient.setQueryData(queryKeys.images.recentUploads(), context.previousRecentUploads);
+      }
     },
-    onSuccess: (id) => {
-      // Remove detail cache
+    onSuccess: ({ id }) => {
       queryClient.removeQueries({ queryKey: queryKeys.images.detail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tags.list() });
     },
   });
 }

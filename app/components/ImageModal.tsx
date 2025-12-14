@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from 'motion/react';
 import { ImageFile } from "../types";
 import { ImageData } from "../types/image";
@@ -23,19 +23,18 @@ export default function ImageModal({ image, isOpen, onClose, onDelete }: ImageMo
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setShowDeleteConfirm(false);
-      setIsDeleting(false);
-    }
-  }, [isOpen]);
+  const handleClose = () => {
+    setShowDeleteConfirm(false);
+    setIsDeleting(false);
+    onClose();
+  };
 
   const handleDelete = () => {
     if (!image || !onDelete || !image.id) return;
 
     // 立即关闭弹窗，乐观更新会处理 UI
     setShowDeleteConfirm(false);
-    onClose();
+    handleClose();
 
     // 触发删除，不等待结果
     onDelete(image.id).catch((err) => {
@@ -57,7 +56,7 @@ export default function ImageModal({ image, isOpen, onClose, onDelete }: ImageMo
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -83,7 +82,7 @@ export default function ImageModal({ image, isOpen, onClose, onDelete }: ImageMo
                   </div>
                   <button
                     className="flex-shrink-0 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
-                    onClick={onClose}
+                    onClick={handleClose}
                   >
                     <Cross1Icon className="h-5 w-5" />
                   </button>
@@ -133,7 +132,7 @@ export default function ImageModal({ image, isOpen, onClose, onDelete }: ImageMo
               {(!canDelete || !showDeleteConfirm) && <div />}
 
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 关闭
