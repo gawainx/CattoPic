@@ -88,6 +88,9 @@ export interface ImageFiltersProps {
 export interface UploadResult {
   id: string;
   status: "success" | "error";
+  originalName?: string;
+  clientFileId?: string;
+  format?: string;
   urls?: {
     original: string;
     webp: string;

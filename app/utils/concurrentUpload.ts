@@ -74,13 +74,20 @@ export async function concurrentUpload(options: ConcurrentUploadOptions): Promis
       })
 
       if (response.success && response.result) {
-        onFileStatusChange(item.id, 'success', response.result)
-        results.push(response.result)
+        const decoratedResult: UploadResult = {
+          ...response.result,
+          originalName: item.file.name,
+          clientFileId: item.id,
+        }
+        onFileStatusChange(item.id, 'success', decoratedResult)
+        results.push(decoratedResult)
       } else {
         const errorResult: UploadResult = {
           id: '',
           status: 'error',
           error: response.error || 'Upload failed',
+          originalName: item.file.name,
+          clientFileId: item.id,
         }
         onFileStatusChange(item.id, 'error', errorResult)
         results.push(errorResult)
@@ -96,6 +103,8 @@ export async function concurrentUpload(options: ConcurrentUploadOptions): Promis
         id: '',
         status: 'error',
         error: errorMessage,
+        originalName: item.file.name,
+        clientFileId: item.id,
       }
       onFileStatusChange(item.id, 'error', errorResult)
       results.push(errorResult)

@@ -5,7 +5,7 @@ import { getApiKey, validateApiKey, setApiKey } from './utils/auth'
 import { api } from './utils/request'
 import { concurrentUpload } from './utils/concurrentUpload'
 import ApiKeyModal from './components/ApiKeyModal'
-import { UploadResponse, StatusMessage as StatusMessageType, ConfigSettings } from './types'
+import { UploadResponse, StatusMessage as StatusMessageType, ConfigSettings, ImageFile, UploadResult, ImageListResponse } from './types'
 import Header from './components/Header'
 import UploadSection from './components/UploadSection'
 import ImageSidebar from './components/ImageSidebar'
@@ -16,6 +16,8 @@ import { ImageIcon, PlusCircledIcon } from './components/ui/icons'
 import { useInvalidateImages } from './hooks/useImages'
 import { useUploadState } from './hooks/useUploadState'
 import { UploadFileItem } from './types/upload'
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
+import { queryKeys } from './lib/queryKeys'
 
 const DEFAULT_MAX_UPLOAD_COUNT = 50;
 
@@ -33,6 +35,7 @@ export default function Home() {
 
   // TanStack Query cache invalidation hook
   const invalidateImages = useInvalidateImages()
+  const queryClient = useQueryClient()
 
   // 上传状态管理
   const uploadState = useUploadState()
@@ -46,6 +49,99 @@ export default function Home() {
   const [compressionMaxWidth, setCompressionMaxWidth] = useState(3840)
   const [preserveAnimation, setPreserveAnimation] = useState(true)
   const [outputFormat, setOutputFormat] = useState<'webp' | 'avif' | 'both'>('both')
+
+  const primeImagesListCache = useCallback((results: UploadResult[]) => {
+    const uploadedImages: ImageFile[] = results
+      .filter((r) => r.status === 'success' && !!r.urls?.original && !!r.orientation && !!r.format)
+      .map((r) => ({
+        id: r.id,
+        originalName: r.originalName || '',
+        uploadTime: new Date().toISOString(),
+        expiryTime: r.expiryTime,
+        orientation: r.orientation!,
+        tags: r.tags || [],
+        format: r.format || '',
+        width: 0,
+        height: 0,
+        paths: { original: '', webp: '', avif: '' },
+        sizes: {
+          original: r.sizes?.original || 0,
+          webp: r.sizes?.webp || 0,
+          avif: r.sizes?.avif || 0,
+        },
+        urls: {
+          original: r.urls!.original,
+          webp: r.urls!.webp,
+          avif: r.urls!.avif,
+        },
+      }))
+
+    if (uploadedImages.length === 0) return
+
+    const cachedLists = queryClient.getQueriesData<InfiniteData<ImageListResponse>>({
+      queryKey: queryKeys.images.lists(),
+    })
+
+    for (const [queryKey, data] of cachedLists) {
+      if (!Array.isArray(queryKey) || queryKey.length < 3) continue
+      const filters = queryKey[2] as { tag?: string; orientation?: string; limit?: number } | undefined
+      const tag = typeof filters?.tag === 'string' ? filters.tag : ''
+      const orientation = typeof filters?.orientation === 'string' ? filters.orientation : ''
+      const limit = typeof filters?.limit === 'number' ? filters.limit : 24
+
+      const matchesFilters = (img: ImageFile) => {
+        const tagOk = !tag || img.tags.includes(tag)
+        const orientationOk = !orientation || img.orientation === orientation
+        return tagOk && orientationOk
+      }
+
+      const candidates = uploadedImages.filter(matchesFilters)
+      if (candidates.length === 0) continue
+
+      queryClient.setQueryData<InfiniteData<ImageListResponse>>(queryKey, (old) => {
+        const uniqueCandidates = candidates.filter((img) => img.id)
+        const uniqueById = (items: ImageFile[]) => {
+          const seen = new Set<string>()
+          const out: ImageFile[] = []
+          for (const item of items) {
+            if (!item.id || seen.has(item.id)) continue
+            seen.add(item.id)
+            out.push(item)
+          }
+          return out
+        }
+
+        if (!old || old.pages.length === 0) {
+          const images = uniqueById(uniqueCandidates).slice(0, limit)
+          return {
+            pageParams: [1],
+            pages: [
+              {
+                images,
+                page: 1,
+                total: images.length,
+                totalPages: 1,
+              },
+            ],
+          }
+        }
+
+        const firstPage = old.pages[0]
+        const mergedFirst = uniqueById([...uniqueCandidates, ...firstPage.images]).slice(0, limit)
+        const addedCount = uniqueCandidates.filter((img) => !firstPage.images.some((oldImg) => oldImg.id === img.id)).length
+        const total = Math.max(0, (firstPage.total || 0) + addedCount)
+        const totalPages = Math.max(1, Math.ceil(total / limit))
+
+        return {
+          ...old,
+          pages: old.pages.map((p, idx) => idx === 0
+            ? { ...p, images: mergedFirst, total, totalPages }
+            : { ...p, total, totalPages }
+          ),
+        }
+      })
+    }
+  }, [queryClient])
 
   useEffect(() => {
     if (uploadResults.length > 0 && !showResultSidebar) {
@@ -171,6 +267,7 @@ export default function Home() {
       })
 
       // Invalidate image list cache
+      primeImagesListCache(resultsWithIds)
       invalidateImages()
 
       // 重置文件详情
@@ -326,8 +423,9 @@ export default function Home() {
         compressionMaxWidth={compressionMaxWidth}
         preserveAnimation={preserveAnimation}
         outputFormat={outputFormat}
-        onZipUploadComplete={() => {
+        onZipUploadComplete={(results) => {
           // ZIP上传完成后刷新图片缓存
+          primeImagesListCache(results)
           invalidateImages()
           setStatus({
             type: 'success',

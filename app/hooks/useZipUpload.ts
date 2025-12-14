@@ -47,6 +47,7 @@ export interface ZipUploadActions {
     maxWidth: number
     preserveAnimation: boolean
     outputFormat: 'webp' | 'avif' | 'both'
+    onCompleted?: (results: UploadResult[]) => void
   }) => Promise<void>
   cancel: () => void
   reset: () => void
@@ -125,6 +126,7 @@ export function useZipUpload(): ZipUploadState & ZipUploadActions {
       maxWidth: number
       preserveAnimation: boolean
       outputFormat: 'webp' | 'avif' | 'both'
+      onCompleted?: (results: UploadResult[]) => void
     }) => {
       const { zipFile, analysis } = state
       if (!zipFile || !analysis) return
@@ -199,11 +201,18 @@ export function useZipUpload(): ZipUploadState & ZipUploadActions {
           allResults.push(...results)
         }
 
+        // Cancelled: do not mark completed (cancel() already reset phase)
+        if (isCancelledRef.current) {
+          return
+        }
+
         setState((prev) => ({
           ...prev,
           phase: 'completed',
           results: allResults,
         }))
+
+        options.onCompleted?.(allResults)
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           // 用户取消

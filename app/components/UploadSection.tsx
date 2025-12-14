@@ -12,6 +12,7 @@ import { api } from '../utils/request'
 import { UploadIcon, ExclamationTriangleIcon, ImageIcon, Spinner } from '../components/ui/icons'
 import { formatFileSize } from '../utils/imageUtils'
 import { useZipUpload, ZipUploadPhase } from '../hooks/useZipUpload'
+import type { UploadResult } from '../types'
 
 const MAX_FILE_SIZE = 70 * 1024 * 1024; // 70MB
 
@@ -32,7 +33,7 @@ interface UploadSectionProps {
   preserveAnimation: boolean
   outputFormat: 'webp' | 'avif' | 'both'
   // ZIP上传完成回调
-  onZipUploadComplete?: () => void
+  onZipUploadComplete?: (results: UploadResult[]) => void
 }
 
 export default function UploadSection({
@@ -114,13 +115,6 @@ export default function UploadSection({
       setFileDetails(existingFiles);
     }
   }, [existingFiles]);
-
-  // ZIP上传完成时通知父组件
-  useEffect(() => {
-    if (zipUpload.phase === 'completed' && onZipUploadComplete) {
-      onZipUploadComplete()
-    }
-  }, [zipUpload.phase, onZipUploadComplete])
 
   // 处理标签变化
   const handleTagsChange = (tags: string[]) => {
@@ -218,6 +212,7 @@ export default function UploadSection({
       maxWidth: compressionMaxWidth,
       preserveAnimation,
       outputFormat,
+      onCompleted: onZipUploadComplete,
     })
   }
 

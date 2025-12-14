@@ -5,6 +5,10 @@ import { useTheme } from '../hooks/useTheme'
 import { usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
 import { ImageIcon, HamburgerMenuIcon, LockClosedIcon, SunIcon, MoonIcon, TagIcon, Link2Icon } from './ui/icons'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../lib/queryKeys'
+import type { ImageListResponse } from '../types'
+import { api } from '../utils/request'
 
 interface HeaderProps {
   onApiKeyClick: () => void
@@ -17,6 +21,7 @@ interface HeaderProps {
 export default function Header({ onApiKeyClick, onTagManageClick, onRandomApiClick, title, isKeyVerified = false }: HeaderProps) {
   const { isDarkMode, toggleTheme } = useTheme()
   const pathname = usePathname()
+  const queryClient = useQueryClient()
 
   const getTitle = () => {
     if (title) return title
@@ -25,7 +30,7 @@ export default function Header({ onApiKeyClick, onTagManageClick, onRandomApiCli
   }
 
   return (
-    <div className="flex items-center justify-between mb-10">
+    <div className="relative z-40 flex items-center justify-between mb-10">
       <div className="flex items-center">
         <Link href="/" className="mr-4">
           <div className="bg-gradient-primary w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transform rotate-12 hover:rotate-0 transition-transform duration-300">
@@ -39,7 +44,29 @@ export default function Header({ onApiKeyClick, onTagManageClick, onRandomApiCli
 
       <div className="flex items-center space-x-2">
         {!pathname?.startsWith('/manage') && (
-          <Link href="/manage" className="btn-icon">
+          <Link
+            href="/manage"
+            className="btn-icon"
+            onClick={() => {
+              // Warm up Manage page list without clearing existing cache (avoid loading spinner).
+              void queryClient.prefetchInfiniteQuery({
+                queryKey: queryKeys.images.list({ tag: '', orientation: '', limit: 24 }),
+                initialPageParam: 1,
+                queryFn: async ({ pageParam = 1 }) => {
+                  const params: Record<string, string> = {
+                    page: String(pageParam),
+                    limit: '24',
+                  }
+                  const response = await api.get<ImageListResponse>('/api/images', params)
+                  return response
+                },
+                getNextPageParam: (lastPage: ImageListResponse) => {
+                  if (lastPage.page < lastPage.totalPages) return lastPage.page + 1
+                  return undefined
+                },
+              })
+            }}
+          >
             <HamburgerMenuIcon className="h-6 w-6" />
           </Link>
         )}
