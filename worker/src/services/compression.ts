@@ -23,6 +23,51 @@ export class CompressionService {
     this.images = images;
   }
 
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private isRetryableTransformError(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : String(err);
+    const lower = message.toLowerCase();
+    return (
+      lower.includes('network connection lost') ||
+      lower.includes('connection lost') ||
+      lower.includes('fetch failed') ||
+      lower.includes('timeout') ||
+      lower.includes('timed out') ||
+      lower.includes('econnreset') ||
+      lower.includes('eai_again') ||
+      lower.includes('temporar')
+    );
+  }
+
+  private async withRetry<T>(
+    label: string,
+    fn: () => Promise<T>,
+    options?: { attempts?: number; baseDelayMs?: number }
+  ): Promise<T> {
+    const attempts = options?.attempts ?? 3;
+    const baseDelayMs = options?.baseDelayMs ?? 120;
+
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err;
+        if (attempt >= attempts || !this.isRetryableTransformError(err)) {
+          throw err;
+        }
+        const delayMs = baseDelayMs * Math.pow(2, attempt - 1);
+        console.warn(`${label} attempt ${attempt} failed (retrying in ${delayMs}ms):`, err);
+        await this.sleep(delayMs);
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  }
+
   /**
    * Compress image to WebP and AVIF formats
    */
@@ -62,23 +107,22 @@ export class CompressionService {
       Math.min(opts.maxHeight, 1600)
     );
 
-    // Compress to WebP and AVIF in parallel (optionally)
-    const [webpResult, avifResult] = await Promise.all([
-      opts.generateWebp
-        ? this.compressToFormat(data, 'webp', opts.quality, targetDims)
-          .catch((e) => {
-            console.error('WebP compression failed:', e);
-            return null;
-          })
-        : Promise.resolve(null),
-      opts.generateAvif
-        ? this.compressToFormat(data, 'avif', opts.quality, avifDims)
-          .catch((e) => {
-            console.error('AVIF compression failed:', e);
-            return null;
-          })
-        : Promise.resolve(null),
-    ]);
+    // Generate WebP first; AVIF is more failure-prone, so run after WebP to reduce concurrent load.
+    const webpResult = opts.generateWebp
+      ? await this.withRetry('WebP compression', () => this.compressToFormat(data, 'webp', opts.quality, targetDims), { attempts: 2 })
+        .catch((e) => {
+          console.error('WebP compression failed:', e);
+          return null;
+        })
+      : null;
+
+    const avifResult = opts.generateAvif
+      ? await this.withRetry('AVIF compression', () => this.compressToFormat(data, 'avif', opts.quality, avifDims), { attempts: 3 })
+        .catch((e) => {
+          console.error('AVIF compression failed:', e);
+          return null;
+        })
+      : null;
 
     if (webpResult) result.webp = webpResult;
     if (avifResult) result.avif = avifResult;
