@@ -173,11 +173,11 @@ export const ImageUrls = ({ image }: ImageUrlsProps) => {
 
   // 确定推荐链接
   const isGif = format === "gif";
-  const recommendedUrl = isGif ? originalUrl : webpUrl;
-  const recommendedType = isGif ? "original" : "webp";
+  const recommendedUrl = isGif ? originalUrl : (webpUrl || avifUrl || originalUrl);
+  const recommendedType = isGif ? "original" : (webpUrl ? "webp" : (avifUrl ? "avif" : "original"));
 
-  // Markdown 始终优先使用 WebP 格式（GIF 除外）
-  const markdownUrl = isGif ? originalUrl : (webpUrl || originalUrl);
+  // Markdown 优先使用 WebP，其次 AVIF（GIF 除外）
+  const markdownUrl = isGif ? originalUrl : (webpUrl || avifUrl || originalUrl);
   const markdownLink = buildMarkdownLink(markdownUrl!, image.originalName || '');
 
   // 构建次要链接列表
@@ -192,8 +192,8 @@ export const ImageUrls = ({ image }: ImageUrlsProps) => {
       {/* 推荐链接 - 主卡片 */}
       <PrimaryUrlCard
         icon={isGif ? CameraIcon : SparklesIcon}
-        label={isGif ? 'GIF 动图链接' : 'WebP 格式 (推荐)'}
-        description={isGif ? '保持动画效果的原始 GIF 文件' : '最佳兼容性与压缩率，适合大多数场景'}
+        label={isGif ? 'GIF 动图链接' : (recommendedType === 'webp' ? 'WebP 格式 (推荐)' : (recommendedType === 'avif' ? 'AVIF 格式 (推荐)' : '原始格式 (推荐)'))}
+        description={isGif ? '保持动画效果的原始 GIF 文件' : (recommendedType === 'webp' ? '最佳兼容性与压缩率，适合大多数场景' : (recommendedType === 'avif' ? '更小体积，适合支持 AVIF 的场景' : '未生成压缩格式，回退到原始格式'))}
         url={recommendedUrl!}
         isCopied={copyStates[recommendedType] || false}
         onCopy={() => handleCopy(recommendedUrl!, recommendedType)}

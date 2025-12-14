@@ -46,6 +46,7 @@ export interface ZipUploadActions {
     quality: number
     maxWidth: number
     preserveAnimation: boolean
+    outputFormat: 'webp' | 'avif' | 'both'
   }) => Promise<void>
   cancel: () => void
   reset: () => void
@@ -123,6 +124,7 @@ export function useZipUpload(): ZipUploadState & ZipUploadActions {
       quality: number
       maxWidth: number
       preserveAnimation: boolean
+      outputFormat: 'webp' | 'avif' | 'both'
     }) => {
       const { zipFile, analysis } = state
       if (!zipFile || !analysis) return
@@ -175,6 +177,7 @@ export function useZipUpload(): ZipUploadState & ZipUploadActions {
             quality: options.quality,
             maxWidth: options.maxWidth,
             preserveAnimation: options.preserveAnimation,
+            outputFormat: options.outputFormat,
             onFileStatusChange: (fileId: string, status: FileUploadStatus, result?: UploadResult) => {
               if (status === 'success') {
                 completedCount++

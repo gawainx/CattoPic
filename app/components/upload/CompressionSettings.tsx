@@ -8,9 +8,11 @@ interface CompressionSettingsProps {
   quality: number
   maxWidth: number
   preserveAnimation: boolean
+  outputFormat: 'webp' | 'avif' | 'both'
   onQualityChange: (quality: number) => void
   onMaxWidthChange: (maxWidth: number) => void
   onPreserveAnimationChange: (preserve: boolean) => void
+  onOutputFormatChange: (format: 'webp' | 'avif' | 'both') => void
 }
 
 const QUALITY_PRESETS = [
@@ -31,9 +33,11 @@ const CompressionSettings = React.memo(function CompressionSettings({
   quality,
   maxWidth,
   preserveAnimation,
+  outputFormat,
   onQualityChange,
   onMaxWidthChange,
   onPreserveAnimationChange,
+  onOutputFormatChange,
 }: CompressionSettingsProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -53,7 +57,7 @@ const CompressionSettings = React.memo(function CompressionSettings({
           <GearIcon className="w-4 h-4" />
           <span>压缩设置</span>
           <span className="text-xs text-slate-400 dark:text-slate-500">
-            (质量: {quality}%, 最大: {maxWidth}px)
+            (输出: {outputFormat.toUpperCase()}, 质量: {quality}%, 最大: {maxWidth}px)
           </span>
         </div>
         <motion.div
@@ -75,6 +79,34 @@ const CompressionSettings = React.memo(function CompressionSettings({
             className="overflow-hidden"
           >
             <div className="pt-4 space-y-4">
+              {/* Output Format */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  输出格式
+                </label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'webp', label: '仅 WebP', desc: '兼容性最好' },
+                    { value: 'avif', label: '仅 AVIF', desc: '体积更小' },
+                    { value: 'both', label: 'WebP + AVIF', desc: '两者都要' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => onOutputFormatChange(opt.value)}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                        outputFormat === opt.value
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      <div>{opt.label}</div>
+                      <div className="text-xs opacity-70">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Quality */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -147,8 +179,9 @@ const CompressionSettings = React.memo(function CompressionSettings({
 
               {/* Info */}
               <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg p-3">
-                <p>图片将自动转换为 WebP 和 AVIF 格式以节省带宽。</p>
-                <p className="mt-1">AVIF 格式最大支持 1600px 尺寸。</p>
+                <p>JPEG/PNG 等格式将按所选输出生成压缩版本。</p>
+                <p className="mt-1">上传本身为 WebP/AVIF/GIF 时不会再二次压缩。</p>
+                <p className="mt-1">AVIF 最大支持 1600px 尺寸。</p>
               </div>
             </div>
           </motion.div>

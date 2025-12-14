@@ -102,6 +102,7 @@ export function ImageUrls({ image }: ImageUrlsProps) {
   const originalUrl = getFullUrl(image.urls?.original || '')
   const webpUrl = getFullUrl(image.urls?.webp || '')
   const avifUrl = getFullUrl(image.urls?.avif || '')
+  const recommendedUrl = webpUrl || avifUrl || originalUrl
 
   return (
     <div className="space-y-4">
@@ -141,7 +142,7 @@ export function ImageUrls({ image }: ImageUrlsProps) {
 
       <UrlItem
         title="Markdown 格式"
-        url={`![${image.originalName || ''}](${webpUrl || originalUrl})`}
+        url={`![${image.originalName || ''}](${recommendedUrl})`}
         icon={<Link1Icon className="h-4 w-4" />}
         iconColor="text-amber-500"
         copyType="markdown"

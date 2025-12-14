@@ -5,9 +5,8 @@ import type { QueueMessage, ImagePaths } from '../types/queue';
 
 // 删除单个图片的所有 R2 文件
 async function deleteImageFiles(paths: ImagePaths, storage: StorageService): Promise<void> {
-  const keysToDelete = [paths.original];
-  if (paths.webp) keysToDelete.push(paths.webp);
-  if (paths.avif) keysToDelete.push(paths.avif);
+  const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
+  const keysToDelete = Array.from(new Set([paths.original, paths.webp, paths.avif].filter(isNonEmptyString)));
   await storage.deleteMany(keysToDelete);
 }
 

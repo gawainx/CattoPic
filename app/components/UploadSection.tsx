@@ -27,6 +27,10 @@ interface UploadSectionProps {
   expiryMinutes: number
   setExpiryMinutes: React.Dispatch<React.SetStateAction<number>>
   onTagsChange?: (tags: string[]) => void
+  compressionQuality: number
+  compressionMaxWidth: number
+  preserveAnimation: boolean
+  outputFormat: 'webp' | 'avif' | 'both'
   // ZIP上传完成回调
   onZipUploadComplete?: () => void
 }
@@ -43,6 +47,10 @@ export default function UploadSection({
   expiryMinutes,
   setExpiryMinutes,
   onTagsChange,
+  compressionQuality,
+  compressionMaxWidth,
+  preserveAnimation,
+  outputFormat,
   onZipUploadComplete
 }: UploadSectionProps) {
   const [uploadMode, setUploadMode] = useState<UploadMode>('images')
@@ -56,11 +64,6 @@ export default function UploadSection({
 
   // ZIP上传状态
   const zipUpload = useZipUpload()
-
-  // 压缩设置（从localStorage读取或使用默认值）
-  const [compressionQuality, setCompressionQuality] = useState(90)
-  const [compressionMaxWidth, setCompressionMaxWidth] = useState(3840)
-  const [preserveAnimation, setPreserveAnimation] = useState(true)
 
   // 判断是否处于ZIP上传进行中
   const isZipProcessing = zipUpload.phase !== 'idle' && zipUpload.phase !== 'preview' && zipUpload.phase !== 'completed'
@@ -214,6 +217,7 @@ export default function UploadSection({
       quality: compressionQuality,
       maxWidth: compressionMaxWidth,
       preserveAnimation,
+      outputFormat,
     })
   }
 

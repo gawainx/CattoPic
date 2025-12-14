@@ -12,6 +12,8 @@ const DEFAULT_OPTIONS: Required<CompressionOptions> = {
   maxWidth: 3840,
   maxHeight: 3840,
   preserveAnimation: true,
+  generateWebp: true,
+  generateAvif: true,
 };
 
 export class CompressionService {
@@ -58,18 +60,22 @@ export class CompressionService {
       height: Math.min(targetDims.height, 1600),
     };
 
-    // Compress to WebP and AVIF in parallel
+    // Compress to WebP and AVIF in parallel (optionally)
     const [webpResult, avifResult] = await Promise.all([
-      this.compressToFormat(data, 'image/webp', opts.quality, targetDims)
-        .catch((e) => {
-          console.error('WebP compression failed:', e);
-          return null;
-        }),
-      this.compressToFormat(data, 'image/avif', opts.quality, avifDims)
-        .catch((e) => {
-          console.error('AVIF compression failed:', e);
-          return null;
-        }),
+      opts.generateWebp
+        ? this.compressToFormat(data, 'image/webp', opts.quality, targetDims)
+          .catch((e) => {
+            console.error('WebP compression failed:', e);
+            return null;
+          })
+        : Promise.resolve(null),
+      opts.generateAvif
+        ? this.compressToFormat(data, 'image/avif', opts.quality, avifDims)
+          .catch((e) => {
+            console.error('AVIF compression failed:', e);
+            return null;
+          })
+        : Promise.resolve(null),
     ]);
 
     if (webpResult) result.webp = webpResult;
@@ -170,5 +176,11 @@ export function parseCompressionOptions(formData: FormData): CompressionOptions 
     maxWidth: parseNumber(formData.get('maxWidth') as string | null, DEFAULT_OPTIONS.maxWidth),
     maxHeight: parseNumber(formData.get('maxHeight') as string | null, DEFAULT_OPTIONS.maxHeight),
     preserveAnimation: formData.get('preserveAnimation') !== 'false',
+    generateWebp: formData.get('generateWebp') === null
+      ? DEFAULT_OPTIONS.generateWebp
+      : formData.get('generateWebp') !== 'false',
+    generateAvif: formData.get('generateAvif') === null
+      ? DEFAULT_OPTIONS.generateAvif
+      : formData.get('generateAvif') !== 'false',
   };
 }

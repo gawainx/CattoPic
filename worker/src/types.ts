@@ -34,6 +34,8 @@ export interface CompressionOptions {
   maxWidth?: number;
   maxHeight?: number;
   preserveAnimation?: boolean;
+  generateWebp?: boolean;
+  generateAvif?: boolean;
 }
 
 export interface CompressedImage {

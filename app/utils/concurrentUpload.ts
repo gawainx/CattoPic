@@ -16,6 +16,7 @@ export interface ConcurrentUploadOptions {
   quality: number
   maxWidth: number
   preserveAnimation: boolean
+  outputFormat: 'webp' | 'avif' | 'both'
   onFileStatusChange: (fileId: string, status: FileUploadStatus, result?: UploadResult) => void
   signal?: AbortSignal
 }
@@ -33,6 +34,7 @@ export async function concurrentUpload(options: ConcurrentUploadOptions): Promis
     quality,
     maxWidth,
     preserveAnimation,
+    outputFormat,
     onFileStatusChange,
     signal,
   } = options
@@ -59,6 +61,8 @@ export async function concurrentUpload(options: ConcurrentUploadOptions): Promis
       formData.append('quality', quality.toString())
       formData.append('maxWidth', maxWidth.toString())
       formData.append('preserveAnimation', preserveAnimation.toString())
+      formData.append('generateWebp', (outputFormat === 'webp' || outputFormat === 'both').toString())
+      formData.append('generateAvif', (outputFormat === 'avif' || outputFormat === 'both').toString())
 
       // Update to processing (after upload starts, before compression completes)
       onFileStatusChange(item.id, 'processing')

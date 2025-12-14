@@ -69,59 +69,63 @@ export async function uploadSingleHandler(c: Context<{ Bindings: Env }>): Promis
 
     // Generate unique ID and paths
     const id = generateImageId();
-    const paths = StorageService.generatePaths(id, imageInfo.orientation, imageInfo.format);
+    const generatedPaths = StorageService.generatePaths(id, imageInfo.orientation, imageInfo.format);
+    const paths = { ...generatedPaths, webp: '', avif: '' };
     const contentType = ImageProcessor.getContentType(imageInfo.format);
 
     const isGif = imageInfo.format === 'gif';
+    const isWebp = imageInfo.format === 'webp';
+    const isAvif = imageInfo.format === 'avif';
+    const shouldSkipProcessing = isGif || isWebp || isAvif;
     let webpSize = 0;
     let avifSize = 0;
 
-    // Parallel upload: original + compression (WebP/AVIF)
-    if (!isGif && compression) {
-      // For non-GIF: upload original and compress in parallel
-      const [, compressionResult] = await Promise.all([
-        storage.upload(paths.original, arrayBuffer, contentType),
-        compression.compress(arrayBuffer, imageInfo.format, compressionOptions),
-      ]);
+    // Always upload original (GIF only stores original)
+    const originalUploadPromise = storage.upload(paths.original, arrayBuffer, contentType);
 
-      // Upload compressed versions in parallel
+    // Advanced formats: do not recompress; treat upload as best format
+    if (shouldSkipProcessing) {
+      await originalUploadPromise;
+
+      if (isWebp) {
+        paths.webp = paths.original;
+        webpSize = file.size;
+      }
+      if (isAvif) {
+        paths.avif = paths.original;
+        avifSize = file.size;
+      }
+    } else if (compression) {
+      const compressionPromise = compression.compress(arrayBuffer, imageInfo.format, compressionOptions);
+
+      // Ensure original is uploaded while compression runs
+      await originalUploadPromise;
+
+      const compressionResult = await compressionPromise;
       const uploadPromises: Promise<void>[] = [];
 
-      if (compressionResult.webp) {
+      if (compressionOptions.generateWebp !== false && compressionResult.webp) {
+        paths.webp = generatedPaths.webp;
         uploadPromises.push(
           storage.upload(paths.webp, compressionResult.webp.data, 'image/webp')
             .then(() => { webpSize = compressionResult.webp!.size; })
         );
-      } else {
-        uploadPromises.push(
-          storage.upload(paths.webp, arrayBuffer, contentType)
-            .then(() => { webpSize = file.size; })
-        );
       }
 
-      if (compressionResult.avif) {
+      if (compressionOptions.generateAvif !== false && compressionResult.avif) {
+        paths.avif = generatedPaths.avif;
         uploadPromises.push(
           storage.upload(paths.avif, compressionResult.avif.data, 'image/avif')
             .then(() => { avifSize = compressionResult.avif!.size; })
         );
-      } else {
-        uploadPromises.push(
-          storage.upload(paths.avif, arrayBuffer, contentType)
-            .then(() => { avifSize = file.size; })
-        );
       }
 
-      await Promise.all(uploadPromises);
-    } else if (!isGif) {
-      // No compression service: upload original and fallback copies in parallel
-      await Promise.all([
-        storage.upload(paths.original, arrayBuffer, contentType),
-        storage.upload(paths.webp, arrayBuffer, contentType).then(() => { webpSize = file.size; }),
-        storage.upload(paths.avif, arrayBuffer, contentType).then(() => { avifSize = file.size; }),
-      ]);
+      if (uploadPromises.length > 0) {
+        await Promise.all(uploadPromises);
+      }
     } else {
-      // GIF: only upload original
-      await storage.upload(paths.original, arrayBuffer, contentType);
+      // No compression service: only store original
+      await originalUploadPromise;
     }
 
     // Calculate expiry time
@@ -159,8 +163,8 @@ export async function uploadSingleHandler(c: Context<{ Bindings: Env }>): Promis
       status: 'success',
       urls: {
         original: `${baseUrl}/${paths.original}`,
-        webp: isGif ? '' : `${baseUrl}/${paths.webp}`,
-        avif: isGif ? '' : `${baseUrl}/${paths.avif}`,
+        webp: !isGif && paths.webp ? `${baseUrl}/${paths.webp}` : '',
+        avif: !isGif && paths.avif ? `${baseUrl}/${paths.avif}` : '',
       },
       orientation: imageInfo.orientation,
       tags,

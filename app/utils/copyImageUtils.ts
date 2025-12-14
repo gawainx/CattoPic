@@ -67,7 +67,7 @@ export const copyOriginalUrl = async (image: ImageFile): Promise<boolean> => {
  * 复制图片链接（WebP格式）
  */
 export const copyWebpUrl = async (image: ImageFile): Promise<boolean> => {
-  const url = getFullUrl(image.urls?.webp || '');
+  const url = getFullUrl(image.urls?.webp || image.urls?.original || '');
   return copyToClipboard(url);
 };
 

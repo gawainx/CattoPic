@@ -45,6 +45,7 @@ export default function Home() {
   const [compressionQuality, setCompressionQuality] = useState(90)
   const [compressionMaxWidth, setCompressionMaxWidth] = useState(3840)
   const [preserveAnimation, setPreserveAnimation] = useState(true)
+  const [outputFormat, setOutputFormat] = useState<'webp' | 'avif' | 'both'>('both')
 
   useEffect(() => {
     if (uploadResults.length > 0 && !showResultSidebar) {
@@ -134,6 +135,7 @@ export default function Home() {
         quality: compressionQuality,
         maxWidth: compressionMaxWidth,
         preserveAnimation,
+        outputFormat,
         onFileStatusChange: updateFileStatus,
         signal: controller.signal,
       })
@@ -320,6 +322,10 @@ export default function Home() {
         expiryMinutes={expiryMinutes}
         setExpiryMinutes={setExpiryMinutes}
         onTagsChange={handleTagsChange}
+        compressionQuality={compressionQuality}
+        compressionMaxWidth={compressionMaxWidth}
+        preserveAnimation={preserveAnimation}
+        outputFormat={outputFormat}
         onZipUploadComplete={() => {
           // ZIP上传完成后刷新图片缓存
           invalidateImages()
@@ -336,9 +342,11 @@ export default function Home() {
           quality={compressionQuality}
           maxWidth={compressionMaxWidth}
           preserveAnimation={preserveAnimation}
+          outputFormat={outputFormat}
           onQualityChange={setCompressionQuality}
           onMaxWidthChange={setCompressionMaxWidth}
           onPreserveAnimationChange={setPreserveAnimation}
+          onOutputFormatChange={setOutputFormat}
         />
       </div>
 
