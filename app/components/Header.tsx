@@ -50,12 +50,12 @@ export default function Header({ onApiKeyClick, onTagManageClick, onRandomApiCli
             onClick={() => {
               // Warm up Manage page list without clearing existing cache (avoid loading spinner).
               void queryClient.prefetchInfiniteQuery({
-                queryKey: queryKeys.images.list({ tag: '', orientation: '', limit: 24 }),
+                queryKey: queryKeys.images.list({ tag: '', orientation: '', format: 'all', limit: 60 }),
                 initialPageParam: 1,
                 queryFn: async ({ pageParam = 1 }) => {
                   const params: Record<string, string> = {
                     page: String(pageParam),
-                    limit: '24',
+                    limit: '60',
                   }
                   const response = await api.get<ImageListResponse>('/api/images', params)
                   return response

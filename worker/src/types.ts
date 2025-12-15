@@ -171,6 +171,7 @@ export interface ImageFilters {
   limit?: number;
   tag?: string;
   orientation?: 'landscape' | 'portrait';
+  format?: 'all' | 'gif' | 'webp' | 'avif' | 'original';
 }
 
 export interface RandomFilters {

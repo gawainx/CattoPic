@@ -23,7 +23,7 @@ export function sanitizeTagName(tag: string): string {
   return tag
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\u4e00-\u9fa5-_]/g, '') // Allow alphanumeric, Chinese, hyphens, underscores
+    .replace(/[^a-z0-9\u4e00-\u9fa5_-]/g, '') // Allow alphanumeric, Chinese, hyphens, underscores
     .substring(0, 50);
 }
 
@@ -55,6 +55,23 @@ export function validateOrientation(value: string | null): 'landscape' | 'portra
 export function validateFormat(value: string | null): 'original' | 'webp' | 'avif' | undefined {
   if (value === 'original' || value === 'webp' || value === 'avif') {
     return value;
+  }
+  return undefined;
+}
+
+export function validateImageListFormat(
+  value: string | null
+): 'all' | 'gif' | 'webp' | 'avif' | 'original' | undefined {
+  if (!value) return undefined;
+  const normalized = value.toLowerCase();
+  if (
+    normalized === 'all'
+    || normalized === 'gif'
+    || normalized === 'webp'
+    || normalized === 'avif'
+    || normalized === 'original'
+  ) {
+    return normalized;
   }
   return undefined;
 }

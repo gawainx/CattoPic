@@ -3,7 +3,7 @@ import type { Env } from '../types';
 import { MetadataService } from '../services/metadata';
 import { CacheService, CacheKeys, CACHE_TTL } from '../services/cache';
 import { successResponse, errorResponse, notFoundResponse } from '../utils/response';
-import { parseNumber, validateOrientation, parseTags, sanitizeTagName, isValidUUID } from '../utils/validation';
+import { parseNumber, validateOrientation, validateImageListFormat, parseTags, sanitizeTagName, isValidUUID } from '../utils/validation';
 import { buildImageUrls } from '../utils/imageTransform';
 
 const MAX_IMAGES_PAGE_SIZE = 100;
@@ -22,9 +22,10 @@ export async function imagesHandler(c: Context<{ Bindings: Env }>): Promise<Resp
     const rawTag = url.searchParams.get('tag');
     const tag = rawTag ? sanitizeTagName(rawTag) || undefined : undefined;
     const orientation = validateOrientation(url.searchParams.get('orientation'));
+    const format = validateImageListFormat(url.searchParams.get('format')) || 'all';
 
     const cache = new CacheService(c.env.CACHE_KV);
-    const cacheKey = CacheKeys.imagesList(page, limit, tag, orientation);
+    const cacheKey = CacheKeys.imagesList(page, limit, tag, orientation, format);
 
     // Try to get from cache - cache stores the response data object, not the Response
     interface ImagesListCache {
@@ -40,7 +41,7 @@ export async function imagesHandler(c: Context<{ Bindings: Env }>): Promise<Resp
     }
 
     const metadata = new MetadataService(c.env.DB);
-    const { images, total } = await metadata.getImages({ page, limit, tag, orientation });
+    const { images, total } = await metadata.getImages({ page, limit, tag, orientation, format });
 
     const baseUrl = c.env.R2_PUBLIC_URL;
 

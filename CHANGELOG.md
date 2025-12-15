@@ -24,6 +24,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Virtualize the Manage page masonry gallery with TanStack Virtual to keep DOM size stable for large libraries.
 - Virtualize Upload sidebars (preview + results) with TanStack Virtual to keep scrolling smooth for large batches.
 - Request resized thumbnail URLs via `/cdn-cgi/image/width=...` for UI grids to reduce bandwidth/decode cost.
+- Add server-side `format` filtering to `/api/images` (`all|gif|webp|avif|original`) to reduce client-side work for large libraries.
+- Increase Manage page page size from 24 to 60 to reduce request churn while scrolling.
+
+### Deprecated
+
+### Removed
 
 ### Fixed
 
@@ -33,3 +39,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Avoid fetching protected image data before an API key is available on the Manage page.
 - Fix a production-only React render-loop crash (#301) in the Manage page virtual masonry.
 - Fix `/favicon.ico` returning 404 by redirecting to `/static/favicon.ico`.
+- Avoid sending `Authorization: Bearer null` when no API key is set.
+- Normalize and validate tag route params for tag rename/delete endpoints.
+- Accept multipart uploads using either `image` or `file` field names.
+
+### Security
+
+- Tighten tag sanitization to avoid unexpected characters in tag management endpoints.

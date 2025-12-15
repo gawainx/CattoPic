@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 
 import { motion } from 'motion/react';
 import ApiKeyModal from "../components/ApiKeyModal";
@@ -34,7 +34,6 @@ export default function Manage() {
     tag: "",
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const autoFetchAttemptsRef = useRef(0);
   const apiKey = useApiKey();
   const hasApiKey = typeof apiKey === "string" && apiKey.length > 0;
 
@@ -52,7 +51,7 @@ export default function Manage() {
     tag: filters.tag || undefined,
     orientation: filters.orientation === 'all' ? undefined : filters.orientation,
     format: filters.format,
-    limit: 24,
+    limit: 60,
     enabled: hasApiKey,
   });
 
@@ -67,20 +66,6 @@ export default function Manage() {
   const displayStatus = status
     || (isUnauthorized ? { type: "error", message: "API Key无效,请重新验证" } : null)
     || (queryError ? { type: "error", message: "加载图片列表失败" } : null);
-
-  // If current filters result in 0 items but there are more pages, auto-fetch a few pages to find matches.
-  useEffect(() => {
-    autoFetchAttemptsRef.current = 0;
-  }, [filters.format, filters.orientation, filters.tag]);
-
-  useEffect(() => {
-    if (isLoading || isFetchingNextPage) return;
-    if (!hasNextPage) return;
-    if (images.length > 0) return;
-    if (autoFetchAttemptsRef.current >= 5) return;
-    autoFetchAttemptsRef.current += 1;
-    void fetchNextPage();
-  }, [images.length, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage]);
 
   const handleDelete = async (id: string) => {
     // 使用 mutate 而不是 mutateAsync，因为乐观更新会立即移除图片

@@ -165,7 +165,7 @@ export class MetadataService {
   }
 
   async getImages(filters: ImageFilters): Promise<{ images: ImageMetadata[]; total: number }> {
-    const { page = 1, limit = 12, tag, orientation } = filters;
+    const { page = 1, limit = 12, tag, orientation, format } = filters;
     const offset = (page - 1) * limit;
 
     let baseQuery = 'FROM images i';
@@ -181,6 +181,26 @@ export class MetadataService {
     if (orientation) {
       whereConditions.push('i.orientation = ?');
       params.push(orientation);
+    }
+
+    if (format && format !== 'all') {
+      switch (format) {
+        case 'gif':
+          whereConditions.push('i.format = ?');
+          params.push('gif');
+          break;
+        case 'webp':
+          whereConditions.push('(i.format = ? OR i.path_webp IS NOT NULL)');
+          params.push('webp');
+          break;
+        case 'avif':
+          whereConditions.push('(i.format = ? OR i.path_avif IS NOT NULL)');
+          params.push('avif');
+          break;
+        case 'original':
+          whereConditions.push('i.path_webp IS NULL AND i.path_avif IS NULL');
+          break;
+      }
     }
 
     const whereClause = whereConditions.length > 0

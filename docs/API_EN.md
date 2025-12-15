@@ -69,8 +69,8 @@ GET /api/random
 
 **Response**
 
-- **Success**: Returns image binary data directly
-  - `Content-Type`: `image/jpeg` | `image/webp` | `image/avif` | `image/gif`
+- **Success**: Returns a 302 redirect to the selected image URL
+  - `Location`: final image URL (R2 public URL or `/cdn-cgi/image/...` transformed URL)
   - `Cache-Control`: `no-cache, no-store, must-revalidate`
 
 - **Failure** (no matching image):
@@ -182,6 +182,7 @@ Authorization: Bearer <api-key>
 | `limit` | number | 12 | Items per page |
 | `tag` | string | - | Filter by tag |
 | `orientation` | string | - | `landscape` or `portrait` |
+| `format` | string | `all` | `all` / `gif` / `webp` / `avif` / `original` |
 
 **Response**
 
@@ -411,7 +412,7 @@ curl -X DELETE \
 
 ### Upload Images
 
-Upload one or more image files.
+Upload a single image file per request. For multiple files, send multiple requests (the frontend uses concurrent uploads).
 
 **Request**
 
@@ -430,7 +431,7 @@ Content-Type: multipart/form-data
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `image` | File | Yes | Image file, max 100MB |
+| `image` (or `file`) | File | Yes | Image file, max 70MB |
 | `tags` | string | No | Comma-separated tags |
 | `expiryMinutes` | number | No | Expiry time in minutes, `0` for never expires |
 
@@ -438,7 +439,7 @@ Content-Type: multipart/form-data
 
 | Limit | Value |
 |-------|-------|
-| Max file size | 100MB |
+| Max file size | 70MB |
 | Supported formats | jpeg, jpg, png, gif, webp, avif |
 
 **Response**
@@ -446,24 +447,22 @@ Content-Type: multipart/form-data
 ```json
 {
   "success": true,
-  "data": {
-    "result": {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "status": "success",
-      "urls": {
-        "original": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.jpg",
-        "webp": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.webp",
-        "avif": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.avif"
-      },
-      "orientation": "landscape",
-      "tags": ["nature", "outdoor"],
-      "sizes": {
-        "original": 245632,
-        "webp": 156789,
-        "avif": 134567
-      },
-      "expiryTime": "2024-12-15T10:30:00Z"
-    }
+  "result": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "success",
+    "urls": {
+      "original": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.jpg",
+      "webp": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.webp",
+      "avif": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.avif"
+    },
+    "orientation": "landscape",
+    "tags": ["nature", "outdoor"],
+    "sizes": {
+      "original": 245632,
+      "webp": 156789,
+      "avif": 134567
+    },
+    "expiryTime": "2024-12-15T10:30:00Z"
   }
 }
 ```

@@ -69,8 +69,8 @@ GET /api/random
 
 **响应**
 
-- **成功**: 直接返回图像二进制数据
-  - `Content-Type`: `image/jpeg` | `image/webp` | `image/avif` | `image/gif`
+- **成功**: 返回 302 重定向到实际图片 URL
+  - `Location`: 最终图片 URL（R2 公网 URL 或 `/cdn-cgi/image/...` 转换 URL）
   - `Cache-Control`: `no-cache, no-store, must-revalidate`
 
 - **失败** (无匹配图像):
@@ -182,6 +182,7 @@ Authorization: Bearer <api-key>
 | `limit` | number | 12 | 每页数量 |
 | `tag` | string | - | 按标签过滤 |
 | `orientation` | string | - | `landscape` 或 `portrait` |
+| `format` | string | `all` | `all` / `gif` / `webp` / `avif` / `original` |
 
 **响应**
 
@@ -409,14 +410,14 @@ curl -X DELETE \
 
 ## 上传接口
 
-### 批量上传图像
+### 上传图像（单文件）
 
-上传一个或多个图像文件。
+每次请求上传 1 张图片；多图上传请并发多次请求（前端已使用并发上传实现）。
 
 **请求**
 
 ```
-POST /api/upload
+POST /api/upload/single
 ```
 
 **请求头**
@@ -430,7 +431,7 @@ Content-Type: multipart/form-data
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `images[]` | File[] | 是 | 图像文件数组，最多 20 个，单个最大 10MB |
+| `image`（或 `file`） | File | 是 | 单张图片文件，最大 70MB |
 | `tags` | string | 否 | 逗号分隔的标签 |
 | `expiryMinutes` | number | 否 | 过期时间（分钟），`0` 表示永不过期 |
 
@@ -438,8 +439,7 @@ Content-Type: multipart/form-data
 
 | 限制项 | 值 |
 |--------|-----|
-| 最大文件数 | 20 |
-| 单文件大小 | 10MB |
+| 单文件大小 | 70MB |
 | 支持格式 | jpeg, jpg, png, gif, webp, avif |
 
 **响应**
@@ -447,30 +447,23 @@ Content-Type: multipart/form-data
 ```json
 {
   "success": true,
-  "results": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "status": "success",
-      "urls": {
-        "original": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.jpg",
-        "webp": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.webp",
-        "avif": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.avif"
-      },
-      "orientation": "landscape",
-      "tags": ["nature", "outdoor"],
-      "sizes": {
-        "original": 245632,
-        "webp": 156789,
-        "avif": 134567
-      },
-      "expiryTime": "2024-12-15T10:30:00Z"
+  "result": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "success",
+    "urls": {
+      "original": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.jpg",
+      "webp": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.webp",
+      "avif": "https://your-worker.workers.dev/r2/images/landscape/550e8400-e29b-41d4-a716-446655440000.avif"
     },
-    {
-      "id": "",
-      "status": "error",
-      "error": "File exceeds maximum size of 10MB"
-    }
-  ]
+    "orientation": "landscape",
+    "tags": ["nature", "outdoor"],
+    "sizes": {
+      "original": 245632,
+      "webp": 156789,
+      "avif": 134567
+    },
+    "expiryTime": "2024-12-15T10:30:00Z"
+  }
 }
 ```
 
@@ -486,18 +479,9 @@ Content-Type: multipart/form-data
 # 上传单个文件
 curl -X POST \
   -H "Authorization: Bearer YOUR_API_KEY" \
-  -F "images[]=@photo.jpg" \
+  -F "image=@photo.jpg" \
   -F "tags=nature,outdoor" \
-  "https://your-worker.workers.dev/api/upload"
-
-# 上传多个文件
-curl -X POST \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -F "images[]=@photo1.jpg" \
-  -F "images[]=@photo2.png" \
-  -F "tags=nature,outdoor" \
-  -F "expiryMinutes=1440" \
-  "https://your-worker.workers.dev/api/upload"
+  "https://your-worker.workers.dev/api/upload/single"
 ```
 
 ---

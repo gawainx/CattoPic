@@ -52,8 +52,8 @@ export async function request<T>(
 
   // 添加认证头
   const headers = {
-    Authorization: `Bearer ${apiKey}`,
     ...options.headers,
+    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
   };
 
   const response = await fetch(url.toString(), {

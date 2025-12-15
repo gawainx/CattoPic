@@ -5,6 +5,17 @@ import { CacheService, CacheKeys, CACHE_TTL } from '../services/cache';
 import { successResponse, errorResponse } from '../utils/response';
 import { sanitizeTagName } from '../utils/validation';
 
+function normalizeTagRouteParam(raw: string): string | null {
+  const decoded = decodeURIComponent(raw);
+  const normalized = sanitizeTagName(decoded);
+  if (!normalized) return null;
+
+  const expected = decoded.toLowerCase().trim();
+  if (expected !== normalized) return null;
+
+  return normalized;
+}
+
 // GET /api/tags - Get all tags
 export async function tagsHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   try {
@@ -64,9 +75,13 @@ export async function createTagHandler(c: Context<{ Bindings: Env }>): Promise<R
 // PUT /api/tags/:name - Rename tag
 export async function renameTagHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   try {
-    const oldName = decodeURIComponent(c.req.param('name'));
+    const oldName = normalizeTagRouteParam(c.req.param('name'));
     const body = await c.req.json();
     const newName = sanitizeTagName(body.newName || '');
+
+    if (!oldName) {
+      return errorResponse('标签名称无效');
+    }
 
     if (!newName) {
       return errorResponse('新标签名称不能为空');
@@ -101,7 +116,10 @@ export async function renameTagHandler(c: Context<{ Bindings: Env }>): Promise<R
 // D1 删除和缓存失效是同步的，R2 文件删除通过 Queue 异步处理
 export async function deleteTagHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   try {
-    const name = decodeURIComponent(c.req.param('name'));
+    const name = normalizeTagRouteParam(c.req.param('name'));
+    if (!name) {
+      return errorResponse('标签名称无效');
+    }
     console.log(`[deleteTag] start: name=${name}`);
 
     const metadata = new MetadataService(c.env.DB);

@@ -38,7 +38,7 @@ export async function uploadSingleHandler(c: Context<{ Bindings: Env }>): Promis
       return errorResponse('Failed to parse form data. File may be too large or corrupted.', 400);
     }
 
-    const file = formData.get('image') as File | null;
+    const file = (formData.get('image') ?? formData.get('file')) as File | null;
     const tagsString = formData.get('tags') as string | null;
     const expiryMinutes = parseNumber(formData.get('expiryMinutes') as string | null, 0);
     const compressionOptions = parseCompressionOptions(formData);
