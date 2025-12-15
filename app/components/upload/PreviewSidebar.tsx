@@ -9,6 +9,8 @@ import {
   Spinner,
   Cross2Icon,
 } from '../ui/icons'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useCallback, useEffect, useRef } from 'react'
 import { UploadPhase, UploadFileItem, FileUploadStatus } from '../../types/upload'
 import UploadStatusIndicator, { getStatusText, getStatusColorClass } from './UploadStatusIndicator'
 
@@ -88,6 +90,24 @@ export default function PreviewSidebar({
 }: PreviewSidebarProps) {
   const uploading = isUploading(phase)
   const totalFiles = files.length
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+
+  const getScrollElement = useCallback(() => scrollRef.current, [])
+  const estimateSize = useCallback(() => 72, [])
+  const removeFile = useCallback((id: string) => onRemoveFile(id), [onRemoveFile])
+
+  const listVirtualizer = useVirtualizer({
+    count: files.length,
+    getScrollElement,
+    estimateSize,
+    overscan: 12,
+    gap: 12, // space-y-3
+  })
+
+  useEffect(() => {
+    if (!isOpen) return
+    listVirtualizer.measure()
+  }, [isOpen, listVirtualizer, files.length])
 
   return (
     <AnimatePresence>
@@ -120,7 +140,8 @@ export default function PreviewSidebar({
           </div>
 
           {/* 侧边栏内容 */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto">
+            <div className="p-4">
             {files.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400 p-6">
                 <ImageIcon className="h-16 w-16 mb-4 text-slate-300 dark:text-slate-600" />
@@ -128,65 +149,84 @@ export default function PreviewSidebar({
                 <p className="text-sm">选择要上传的文件后会显示在这里</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {files.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className={`group flex items-center p-3 rounded-lg border transition-all duration-200 ${
-                      item.status === 'success'
-                        ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200/50 dark:border-green-800/30'
-                        : item.status === 'error'
-                        ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200/50 dark:border-red-800/30'
-                        : 'bg-slate-200/50 dark:bg-slate-700/30 border-slate-300/30 dark:border-slate-600/30 hover:bg-slate-200/80 dark:hover:bg-slate-700/50'
-                    }`}
-                  >
-                    {/* 状态指示器 */}
-                    <div className="shrink-0 mr-3">
-                      <div className="w-12 h-12 flex items-center justify-center overflow-hidden bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                        <UploadStatusIndicator status={item.status} size="md" />
-                      </div>
-                    </div>
+              <div
+                style={{
+                  height: `${listVirtualizer.getTotalSize()}px`,
+                  position: 'relative',
+                }}
+              >
+                {listVirtualizer.getVirtualItems().map((virtualItem) => {
+                  const item = files[virtualItem.index]
+                  if (!item) return null
 
-                    {/* 文件信息 */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
-                        {item.file.name}
-                      </p>
-                      <div className="flex items-center mt-1">
-                        {item.status === 'error' && item.error ? (
-                          <span className="text-xs text-red-500 truncate">
-                            {item.error}
-                          </span>
-                        ) : (
-                          <>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {formatFileSize(item.file.size)}
-                            </span>
-                            <span className="mx-1.5 text-slate-300 dark:text-slate-600">|</span>
-                            <span className={`text-xs ${getStatusColorClass(item.status)}`}>
-                              {getStatusText(item.status)}
-                            </span>
-                          </>
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translate3d(0, ${virtualItem.start}px, 0)`,
+                      }}
+                    >
+                      <div
+                        className={`group flex items-center p-3 rounded-lg border transition-colors duration-200 ${
+                          item.status === 'success'
+                            ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200/50 dark:border-green-800/30'
+                            : item.status === 'error'
+                              ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200/50 dark:border-red-800/30'
+                              : 'bg-slate-200/50 dark:bg-slate-700/30 border-slate-300/30 dark:border-slate-600/30 hover:bg-slate-200/80 dark:hover:bg-slate-700/50'
+                        }`}
+                        style={{ height: 72 }}
+                      >
+                        {/* 状态指示器 */}
+                        <div className="shrink-0 mr-3">
+                          <div className="w-12 h-12 flex items-center justify-center overflow-hidden bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                            <UploadStatusIndicator status={item.status} size="md" />
+                          </div>
+                        </div>
+
+                        {/* 文件信息 */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
+                            {item.file.name}
+                          </p>
+                          <div className="flex items-center mt-1">
+                            {item.status === 'error' && item.error ? (
+                              <span className="text-xs text-red-500 truncate">
+                                {item.error}
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                  {formatFileSize(item.file.size)}
+                                </span>
+                                <span className="mx-1.5 text-slate-300 dark:text-slate-600">|</span>
+                                <span className={`text-xs ${getStatusColorClass(item.status)}`}>
+                                  {getStatusText(item.status)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 操作按钮 */}
+                        {canRemoveFile(item.status) && (
+                          <button
+                            onClick={() => removeFile(item.id)}
+                            className="shrink-0 p-2 rounded-full text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
                         )}
                       </div>
                     </div>
-
-                    {/* 操作按钮 */}
-                    {canRemoveFile(item.status) && (
-                      <button
-                        onClick={() => onRemoveFile(item.id)}
-                        className="shrink-0 p-2 rounded-full text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </motion.div>
-                ))}
+                  )
+                })}
               </div>
             )}
+            </div>
           </div>
 
           {/* 底部操作栏 */}

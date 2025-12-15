@@ -21,8 +21,12 @@ function getColumnWidth(containerWidth: number, lanes: number): number {
   return Math.max(1, width);
 }
 
-function estimateCardHeight(orientation: ImageFile['orientation'], columnWidth: number): number {
-  const aspectRatio = orientation === 'portrait' ? 3 / 4 : 4 / 3; // width / height
+function estimateCardHeight(image: Pick<ImageFile, 'width' | 'height' | 'orientation'>, columnWidth: number): number {
+  if (image.width > 0 && image.height > 0) {
+    return columnWidth * (image.height / image.width);
+  }
+
+  const aspectRatio = image.orientation === 'portrait' ? 3 / 4 : 4 / 3; // width / height
   return columnWidth / aspectRatio;
 }
 
@@ -55,14 +59,14 @@ function VirtualImageMasonryInner({
 }: VirtualImageMasonryInnerProps) {
   const lastFetchTriggerIndexRef = useRef(-1);
 
-  const overscan = Math.max(12, lanes * 8);
+  const overscan = Math.max(12, lanes * 6);
 
   const getItemKey = useCallback((index: number) => images[index]?.id ?? index, [images]);
 
   const estimateSize = useCallback((index: number) => {
     const image = images[index];
     if (!image) return 0;
-    return estimateCardHeight(image.orientation, columnWidth);
+    return estimateCardHeight(image, columnWidth);
   }, [images, columnWidth]);
 
   const rowVirtualizer = useWindowVirtualizer<HTMLDivElement>({
@@ -114,8 +118,6 @@ function VirtualImageMasonryInner({
         return (
           <div
             key={image.id}
-            data-index={virtualItem.index}
-            ref={rowVirtualizer.measureElement}
             style={{
               position: 'absolute',
               top: 0,
@@ -127,8 +129,9 @@ function VirtualImageMasonryInner({
           >
             <ImageCard
               image={image}
-              onClick={() => onImageClick(image)}
+              onClick={onImageClick}
               onDelete={onDelete}
+              displayWidth={columnWidth}
             />
           </div>
         );

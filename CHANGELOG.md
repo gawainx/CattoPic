@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Disable Next.js image optimization since images are already delivered as transformed URLs.
 - Transform-URL parameters now follow the configured settings (no extra flags; no forced AVIF resize unless a max size is specified).
 - Virtualize the Manage page masonry gallery with TanStack Virtual to keep DOM size stable for large libraries.
+- Virtualize Upload sidebars (preview + results) with TanStack Virtual to keep scrolling smooth for large batches.
+- Request resized thumbnail URLs via `/cdn-cgi/image/width=...` for UI grids to reduce bandwidth/decode cost.
 
 ### Fixed
 

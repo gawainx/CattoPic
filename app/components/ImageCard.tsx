@@ -5,6 +5,7 @@ import React, { useState, useCallback, useRef, useMemo } from "react";
 import { motion } from 'motion/react';
 import { ImageFile } from "../types";
 import { getFullUrl } from "../utils/baseUrl";
+import { toCdnCgiImageUrl } from "../utils/cdnImage";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { getFormatLabel, getOrientationLabel } from "../utils/imageUtils";
 import ContextMenu, { ContextMenuGroup } from "./ContextMenu";
@@ -27,30 +28,32 @@ import {
   CopyIcon
 } from './ui/icons';
 
-// 根据方向确定高度类和比例
-const getHeightAndAspectRatio = (orientation: string) => {
+// 根据方向确定兜底比例（优先使用元数据 width/height）
+const getFallbackAspectRatio = (orientation: string): string => {
   switch (orientation.toLowerCase()) {
     case "portrait":
-      return { heightClass: "h-auto", aspectRatio: "aspect-3/4" };
+      return "3 / 4";
     case "landscape":
-      return { heightClass: "h-auto", aspectRatio: "aspect-4/3" };
+      return "4 / 3";
     case "square":
-      return { heightClass: "h-auto", aspectRatio: "aspect-square" };
+      return "1 / 1";
     default:
-      return { heightClass: "h-auto", aspectRatio: "aspect-auto" };
+      return "4 / 3";
   }
 };
 
 interface ImageCardProps {
   image: ImageFile;
-  onClick: () => void;
+  onClick: (image: ImageFile) => void;
   onDelete: (id: string) => Promise<void>;
+  displayWidth: number;
 }
 
 const ImageCard = React.memo(function ImageCard({
   image,
   onClick,
   onDelete,
+  displayWidth,
 }: ImageCardProps) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [isHovered, setIsHovered] = useState(false);
@@ -67,10 +70,26 @@ const ImageCard = React.memo(function ImageCard({
 
   // 使用 useMemo 缓存计算结果
   const isGif = useMemo(() => image.format.toLowerCase() === "gif", [image.format]);
-  const { heightClass, aspectRatio } = useMemo(
-    () => getHeightAndAspectRatio(image.orientation),
-    [image.orientation]
-  );
+  const aspectRatio = useMemo(() => {
+    if (image.width > 0 && image.height > 0) {
+      return `${image.width} / ${image.height}`;
+    }
+    return getFallbackAspectRatio(image.orientation);
+  }, [image.width, image.height, image.orientation]);
+
+  const imageSrc = useMemo(() => {
+    const base = getFullUrl(image.urls?.webp || image.urls?.original || '');
+    if (!base || isGif) return base;
+
+    // Request a resized thumbnail for smoother scrolling (less decode + bandwidth).
+    // Use 2x to keep it crisp on high-DPI displays.
+    const requestWidth = Math.max(1, Math.ceil(displayWidth * 2));
+    return toCdnCgiImageUrl(base, { width: requestWidth, quality: 75, format: 'auto', fit: 'scale-down' });
+  }, [displayWidth, image.urls, isGif]);
+
+  const handleOpen = useCallback(() => {
+    onClick(image);
+  }, [onClick, image]);
 
   const handleImageLoad = useCallback(() => {
     setIsLoading(false);
@@ -205,7 +224,10 @@ const ImageCard = React.memo(function ImageCard({
         {
           id: "preview",
           label: "预览图片",
-          onClick: onClick,
+          onClick: (e) => {
+            e.preventDefault();
+            handleOpen();
+          },
           icon: <EyeOpenIcon className="h-4 w-4" />,
         },
         {
@@ -223,7 +245,7 @@ const ImageCard = React.memo(function ImageCard({
         },
       ],
     },
-  ], [image.format, image.urls, handleCopy, onClick, handleDelete, isDeleting]);
+  ], [image.format, image.urls, handleCopy, handleOpen, handleDelete, isDeleting]);
 
   return (
     <>
@@ -232,19 +254,20 @@ const ImageCard = React.memo(function ImageCard({
         initial={false}
         whileHover={{ y: -8, transition: { duration: 0.2 } }}
         className="rounded-2xl overflow-hidden group cursor-pointer bg-white dark:bg-slate-800 border border-gray-200/80 dark:border-gray-700 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.08),0_4px_24px_-8px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_32px_-8px_rgba(99,102,241,0.25),0_4px_16px_-4px_rgba(0,0,0,0.1)] hover:border-indigo-300/70 dark:hover:border-indigo-500/70 dark:shadow-[0_2px_12px_-3px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_8px_32px_-8px_rgba(99,102,241,0.35)] transition-all duration-300 h-full ring-1 ring-black/[0.03] dark:ring-white/[0.05]"
-        onClick={onClick}
+        onClick={handleOpen}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onContextMenu={handleContextMenu}
       >
         <div
-          className={`relative ${heightClass} ${aspectRatio} overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-900 dark:to-gray-800 w-full`}
+          className="relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-900 dark:to-gray-800 w-full"
+          style={{ aspectRatio }}
         >
           {isGif ? (
             // Use img tag for GIFs to ensure animation plays
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={getFullUrl(image.urls?.original || '')}
+              src={imageSrc}
               alt={image.originalName}
               onLoad={handleImageLoad}
               className={`w-full h-full object-cover transition-all duration-500 ${
@@ -254,7 +277,7 @@ const ImageCard = React.memo(function ImageCard({
           ) : (
             // Use Next.js Image for non-GIF images with optimizations
             <Image
-              src={getFullUrl(image.urls?.webp || image.urls?.original || '')}
+              src={imageSrc}
               alt={image.originalName}
               fill
               loading="lazy"

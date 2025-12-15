@@ -22,6 +22,8 @@
 - 关闭 Next.js 图片优化（图片已使用 Transform-URL 输出，无需再二次优化）。
 - Transform-URL 参数改为严格按配置输出（不再附加额外参数；未设置最大尺寸时不强制 AVIF 缩放）。
 - 管理页瀑布流列表引入 TanStack Virtual 虚拟渲染，保持大图库场景下 DOM 数量稳定。
+- 上传页侧边栏（预览/结果）引入 TanStack Virtual 虚拟渲染，提升大批量场景下的滚动流畅度。
+- UI 列表/网格统一使用 `/cdn-cgi/image/width=...` 请求缩略图，降低带宽与解码开销。
 
 ### 修复
 
