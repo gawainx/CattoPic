@@ -3,16 +3,24 @@ import type { Env } from '../types';
 import { MetadataService } from '../services/metadata';
 import { CacheService, CacheKeys, CACHE_TTL } from '../services/cache';
 import { successResponse, errorResponse, notFoundResponse } from '../utils/response';
-import { parseNumber, validateOrientation, parseTags, isValidUUID } from '../utils/validation';
+import { parseNumber, validateOrientation, parseTags, sanitizeTagName, isValidUUID } from '../utils/validation';
 import { buildImageUrls } from '../utils/imageTransform';
+
+const MAX_IMAGES_PAGE_SIZE = 100;
+
+function clampInt(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, Math.trunc(value)));
+}
 
 // GET /api/images - List images with pagination and filters
 export async function imagesHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   try {
     const url = new URL(c.req.url);
-    const page = parseNumber(url.searchParams.get('page'), 1);
-    const limit = parseNumber(url.searchParams.get('limit'), 12);
-    const tag = url.searchParams.get('tag') || undefined;
+    const page = Math.max(1, parseNumber(url.searchParams.get('page'), 1));
+    const limit = clampInt(parseNumber(url.searchParams.get('limit'), 12), 1, MAX_IMAGES_PAGE_SIZE);
+    const rawTag = url.searchParams.get('tag');
+    const tag = rawTag ? sanitizeTagName(rawTag) || undefined : undefined;
     const orientation = validateOrientation(url.searchParams.get('orientation'));
 
     const cache = new CacheService(c.env.CACHE_KV);
@@ -143,7 +151,18 @@ export async function updateImageHandler(c: Context<{ Bindings: Env }>): Promise
     const updates: Record<string, string[] | string | undefined> = {};
 
     if (body.tags !== undefined) {
-      updates.tags = Array.isArray(body.tags) ? body.tags : parseTags(body.tags);
+      if (body.tags === null) {
+        updates.tags = [];
+      } else if (Array.isArray(body.tags)) {
+        const normalized = body.tags
+          .map((tag: unknown) => sanitizeTagName(typeof tag === 'string' ? tag : String(tag)))
+          .filter((tag: string) => tag.length > 0);
+        updates.tags = Array.from(new Set(normalized));
+      } else if (typeof body.tags === 'string') {
+        updates.tags = Array.from(new Set(parseTags(body.tags)));
+      } else {
+        return errorResponse('tags must be a string, string[], or null');
+      }
     }
 
     if (body.expiryMinutes !== undefined) {
