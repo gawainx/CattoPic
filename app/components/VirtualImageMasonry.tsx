@@ -1,7 +1,7 @@
 'use client';
 
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ImageFile } from '../types';
 import ImageCard from './ImageCard';
 
@@ -36,6 +36,107 @@ export interface VirtualImageMasonryProps {
   layoutKey?: string | number;
 }
 
+interface VirtualImageMasonryInnerProps extends Omit<VirtualImageMasonryProps, 'layoutKey'> {
+  lanes: number;
+  columnWidth: number;
+  scrollMargin: number;
+}
+
+function VirtualImageMasonryInner({
+  images,
+  onImageClick,
+  onDelete,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  lanes,
+  columnWidth,
+  scrollMargin,
+}: VirtualImageMasonryInnerProps) {
+  const lastFetchTriggerIndexRef = useRef(-1);
+
+  const overscan = Math.max(12, lanes * 8);
+
+  const getItemKey = useCallback((index: number) => images[index]?.id ?? index, [images]);
+
+  const estimateSize = useCallback((index: number) => {
+    const image = images[index];
+    if (!image) return 0;
+    return estimateCardHeight(image.orientation, columnWidth);
+  }, [images, columnWidth]);
+
+  const rowVirtualizer = useWindowVirtualizer<HTMLDivElement>({
+    count: images.length,
+    estimateSize,
+    getItemKey,
+    overscan,
+    lanes,
+    scrollMargin,
+    gap: GUTTER_PX,
+  });
+
+  useEffect(() => {
+    rowVirtualizer.measure();
+  }, [rowVirtualizer, columnWidth]);
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const lastVirtualIndex = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1].index : -1;
+
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    if (images.length === 0) return;
+    if (lastVirtualIndex < 0) return;
+
+    const remainingThreshold = lanes * 10;
+    const triggerIndex = Math.max(0, images.length - 1 - remainingThreshold);
+
+    if (lastVirtualIndex < triggerIndex) return;
+    if (lastFetchTriggerIndexRef.current === lastVirtualIndex) return;
+
+    lastFetchTriggerIndexRef.current = lastVirtualIndex;
+    void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, images.length, lanes, lastVirtualIndex]);
+
+  return (
+    <div
+      style={{
+        height: `${rowVirtualizer.getTotalSize()}px`,
+        position: 'relative',
+      }}
+    >
+      {virtualItems.map((virtualItem) => {
+        const image = images[virtualItem.index];
+        if (!image) return null;
+
+        const x = virtualItem.lane * (columnWidth + GUTTER_PX);
+        const y = virtualItem.start - scrollMargin;
+
+        return (
+          <div
+            key={image.id}
+            data-index={virtualItem.index}
+            ref={rowVirtualizer.measureElement}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: `${columnWidth}px`,
+              transform: `translate3d(${x}px, ${y}px, 0)`,
+              boxSizing: 'border-box',
+            }}
+          >
+            <ImageCard
+              image={image}
+              onClick={() => onImageClick(image)}
+              onDelete={onDelete}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function VirtualImageMasonry({
   images,
   onImageClick,
@@ -47,8 +148,7 @@ export default function VirtualImageMasonry({
 }: VirtualImageMasonryProps) {
   const parentRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [scrollMargin, setScrollMargin] = useState(0);
-  const lastFetchTriggerIndexRef = useRef(-1);
+  const [scrollMargin, setScrollMargin] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     const el = parentRef.current;
@@ -75,87 +175,33 @@ export default function VirtualImageMasonry({
     if (!el) return;
 
     const nextMargin = el.getBoundingClientRect().top + window.scrollY;
-    setScrollMargin((prev) => (Math.abs(prev - nextMargin) > 1 ? nextMargin : prev));
+    setScrollMargin((prev) => {
+      if (prev === null) return nextMargin;
+      return Math.abs(prev - nextMargin) > 1 ? nextMargin : prev;
+    });
   }, [containerWidth, layoutKey]);
 
   const lanes = useMemo(() => getLaneCount(containerWidth), [containerWidth]);
   const columnWidth = useMemo(() => getColumnWidth(containerWidth, lanes), [containerWidth, lanes]);
-  const overscan = Math.max(12, lanes * 8);
 
-  const rowVirtualizer = useWindowVirtualizer<HTMLDivElement>({
-    count: images.length,
-    estimateSize: (index) => {
-      const image = images[index];
-      if (!image) return 0;
-      return estimateCardHeight(image.orientation, columnWidth);
-    },
-    getItemKey: (index) => images[index]?.id ?? index,
-    overscan,
-    lanes,
-    scrollMargin,
-    gap: GUTTER_PX,
-  });
-
-  useEffect(() => {
-    rowVirtualizer.measure();
-  }, [rowVirtualizer, columnWidth, lanes]);
-
-  const virtualItems = rowVirtualizer.getVirtualItems();
-  const lastVirtualIndex = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1].index : -1;
-
-  useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage) return;
-    if (images.length === 0) return;
-    if (lastVirtualIndex < 0) return;
-
-    const remainingThreshold = lanes * 10;
-    const triggerIndex = Math.max(0, images.length - 1 - remainingThreshold);
-
-    if (lastVirtualIndex < triggerIndex) return;
-    if (lastFetchTriggerIndexRef.current === lastVirtualIndex) return;
-
-    lastFetchTriggerIndexRef.current = lastVirtualIndex;
-    void fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, images.length, lanes, lastVirtualIndex]);
+  const isReady = containerWidth > 0 && scrollMargin !== null;
 
   return (
     <div ref={parentRef}>
-      <div
-        style={{
-          height: `${rowVirtualizer.getTotalSize()}px`,
-          position: 'relative',
-        }}
-      >
-        {virtualItems.map((virtualItem) => {
-          const image = images[virtualItem.index];
-          if (!image) return null;
-
-          const x = virtualItem.lane * (columnWidth + GUTTER_PX);
-          const y = virtualItem.start - scrollMargin;
-
-          return (
-            <div
-              key={image.id}
-              data-index={virtualItem.index}
-              ref={rowVirtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: `${columnWidth}px`,
-                transform: `translate3d(${x}px, ${y}px, 0)`,
-                boxSizing: 'border-box',
-              }}
-            >
-              <ImageCard
-                image={image}
-                onClick={() => onImageClick(image)}
-                onDelete={onDelete}
-              />
-            </div>
-          );
-        })}
-      </div>
+      {isReady ? (
+        <VirtualImageMasonryInner
+          key={`${lanes}:${Math.round(scrollMargin)}`}
+          images={images}
+          onImageClick={onImageClick}
+          onDelete={onDelete}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          fetchNextPage={fetchNextPage}
+          lanes={lanes}
+          columnWidth={columnWidth}
+          scrollMargin={scrollMargin}
+        />
+      ) : null}
     </div>
   );
 }

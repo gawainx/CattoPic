@@ -29,3 +29,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Fix Manage page Random API generator to resolve the real API base URL (via `/api/config`) instead of the placeholder `https://your-worker.workers.dev`.
 - Clamp `/api/images` pagination parameters and normalize/sanitize tag updates in `/api/images/:id`.
 - Avoid fetching protected image data before an API key is available on the Manage page.
+- Fix a production-only React render-loop crash (#301) in the Manage page virtual masonry.
+- Fix `/favicon.ico` returning 404 by redirecting to `/static/favicon.ico`.

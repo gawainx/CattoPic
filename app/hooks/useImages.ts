@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   useQuery,
   useInfiniteQuery,
@@ -163,7 +163,10 @@ export function useInfiniteImages(options: UseImagesOptions = {}) {
   });
 
   // Flatten all pages into a single array
-  const images = query.data?.pages.flatMap((page) => page.images) || [];
+  const images = useMemo(
+    () => query.data?.pages.flatMap((page) => page.images) || [],
+    [query.data]
+  );
   const total = query.data?.pages[0]?.total || 0;
 
   // Refetch all pages
