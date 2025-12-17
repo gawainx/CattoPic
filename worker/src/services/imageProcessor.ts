@@ -58,8 +58,12 @@ export class ImageProcessor {
         return this.getJpegDimensions(bytes);
       case 'gif':
         return this.getGifDimensions(bytes);
+      case 'webp':
+        return this.getWebpDimensions(bytes);
+      case 'avif':
+        return this.getAvifDimensions(bytes);
       default:
-        // Default fallback
+        // Default fallback for unknown formats
         return { width: 1920, height: 1080 };
     }
   }
@@ -102,6 +106,82 @@ export class ImageProcessor {
     const width = bytes[6] | (bytes[7] << 8);
     const height = bytes[8] | (bytes[9] << 8);
     return { width, height };
+  }
+
+  private static getWebpDimensions(bytes: Uint8Array): { width: number; height: number } {
+    // WebP file structure:
+    // bytes 0-3: "RIFF"
+    // bytes 4-7: file size
+    // bytes 8-11: "WEBP"
+    // bytes 12-15: chunk type ("VP8 ", "VP8L", "VP8X")
+
+    // Check for VP8X (extended format) - bytes 12-15 = "VP8X"
+    if (bytes[12] === 0x56 && bytes[13] === 0x50 && bytes[14] === 0x38 && bytes[15] === 0x58) {
+      // VP8X: width at bytes 24-26 (little-endian, 24-bit) + 1
+      // height at bytes 27-29 (little-endian, 24-bit) + 1
+      const width = (bytes[24] | (bytes[25] << 8) | (bytes[26] << 16)) + 1;
+      const height = (bytes[27] | (bytes[28] << 8) | (bytes[29] << 16)) + 1;
+      return { width, height };
+    }
+
+    // Check for VP8L (lossless) - bytes 12-15 = "VP8L"
+    if (bytes[12] === 0x56 && bytes[13] === 0x50 && bytes[14] === 0x38 && bytes[15] === 0x4C) {
+      // VP8L: signature byte at 20, then 4 bytes for width/height
+      const b0 = bytes[21];
+      const b1 = bytes[22];
+      const b2 = bytes[23];
+      const b3 = bytes[24];
+      const width = ((b0 | (b1 << 8)) & 0x3FFF) + 1;
+      const height = (((b1 >> 6) | (b2 << 2) | (b3 << 10)) & 0x3FFF) + 1;
+      return { width, height };
+    }
+
+    // Check for VP8 (lossy) - bytes 12-15 = "VP8 "
+    if (bytes[12] === 0x56 && bytes[13] === 0x50 && bytes[14] === 0x38 && bytes[15] === 0x20) {
+      // VP8: skip to frame header, width at bytes 26-27, height at 28-29
+      const width = (bytes[26] | (bytes[27] << 8)) & 0x3FFF;
+      const height = (bytes[28] | (bytes[29] << 8)) & 0x3FFF;
+      return { width, height };
+    }
+
+    return { width: 1920, height: 1080 }; // fallback
+  }
+
+  private static getAvifDimensions(bytes: Uint8Array): { width: number; height: number } {
+    // AVIF uses ISOBMFF container, need to find 'ispe' box for dimensions
+    let offset = 0;
+
+    while (offset < bytes.length - 8) {
+      const boxSize = (bytes[offset] << 24) | (bytes[offset + 1] << 16) |
+                      (bytes[offset + 2] << 8) | bytes[offset + 3];
+      const boxType = String.fromCharCode(
+        bytes[offset + 4], bytes[offset + 5],
+        bytes[offset + 6], bytes[offset + 7]
+      );
+
+      if (boxSize === 0) break; // Invalid box
+
+      // 'ispe' box contains width and height
+      if (boxType === 'ispe') {
+        // ispe box: 4 bytes version/flags, then 4 bytes width, 4 bytes height
+        const width = (bytes[offset + 12] << 24) | (bytes[offset + 13] << 16) |
+                      (bytes[offset + 14] << 8) | bytes[offset + 15];
+        const height = (bytes[offset + 16] << 24) | (bytes[offset + 17] << 16) |
+                       (bytes[offset + 18] << 8) | bytes[offset + 19];
+        return { width, height };
+      }
+
+      // Container boxes that we need to descend into
+      if (['meta', 'iprp', 'ipco'].includes(boxType)) {
+        // Skip box header (8 bytes) or full box header (12 bytes for 'meta')
+        offset += boxType === 'meta' ? 12 : 8;
+        continue;
+      }
+
+      offset += boxSize;
+    }
+
+    return { width: 1920, height: 1080 }; // fallback
   }
 
   // Detect orientation based on dimensions
