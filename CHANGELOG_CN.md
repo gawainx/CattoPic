@@ -8,6 +8,7 @@
 
 ### 新增
 
+- **Cloudflare Queues 可选化** - R2 文件删除不再强制依赖 Cloudflare Queues。在 wrangler.toml 中设置 `USE_QUEUE = 'true'` 使用异步队列删除，设置为 `'false'` 则使用同步删除（无需付费 Queue 功能）。
 - **ZIP 批量上传** - 支持通过 ZIP 压缩包批量上传图片
   - 使用 JSZip 在浏览器端解压
   - 分批处理（每批 50 张）防止内存溢出

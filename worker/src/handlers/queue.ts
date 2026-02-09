@@ -1,14 +1,7 @@
 // Queue Consumer Handler - 处理异步 R2 文件删除
 import { StorageService } from '../services/storage';
 import type { Env } from '../types';
-import type { QueueMessage, ImagePaths } from '../types/queue';
-
-// 删除单个图片的所有 R2 文件
-async function deleteImageFiles(paths: ImagePaths, storage: StorageService): Promise<void> {
-  const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
-  const keysToDelete = Array.from(new Set([paths.original, paths.webp, paths.avif].filter(isNonEmptyString)));
-  await storage.deleteMany(keysToDelete);
-}
+import type { QueueMessage } from '../types/queue';
 
 export async function handleQueueBatch(
   batch: MessageBatch<QueueMessage>,
@@ -20,16 +13,14 @@ export async function handleQueueBatch(
     try {
       switch (message.body.type) {
         case 'delete_image':
-          // 单个图片：删除其所有 R2 文件
           console.log(`Deleting R2 files for image: ${message.body.imageId}`);
-          await deleteImageFiles(message.body.paths, storage);
+          await storage.deleteImageFiles(message.body.paths);
           break;
 
         case 'delete_tag_images':
-          // 批量图片：并行删除所有关联图片的 R2 文件
           console.log(`Deleting R2 files for tag: ${message.body.tagName}, ${message.body.imagePaths.length} images`);
           await Promise.all(
-            message.body.imagePaths.map(img => deleteImageFiles(img.paths, storage))
+            message.body.imagePaths.map(img => storage.deleteImageFiles(img.paths))
           );
           break;
       }

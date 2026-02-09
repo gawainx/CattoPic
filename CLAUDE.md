@@ -73,7 +73,9 @@ NEXT_PUBLIC_WORKER_URL=http://localhost:8787  # or production Worker URL
 ```
 
 ### Worker (wrangler.toml)
-Bindings: `R2_BUCKET` (R2), `DB` (D1), `IMAGES` (Cloudflare Images for compression)
+Bindings: `R2_BUCKET` (R2), `DB` (D1), `CACHE_KV` (KV), `IMAGES` (Cloudflare Images for compression), `DELETE_QUEUE` (optional, Cloudflare Queue)
+
+Variables: `ENVIRONMENT`, `R2_PUBLIC_URL`, `USE_QUEUE` (`'true'` to enable async Queue-based R2 deletion, `'false'` or omit for synchronous deletion)
 
 ## Changelog
 

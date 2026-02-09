@@ -11,6 +11,9 @@ compatibility_flags = ['nodejs_compat']
 ENVIRONMENT = 'production'
 # Your R2 bucket public URL (custom domain or workers.dev URL)
 R2_PUBLIC_URL = '<your-r2-public-url>'
+# Set to 'true' to enable Cloudflare Queues for async R2 deletion
+# Set to 'false' or remove to use synchronous deletion (no Queue required)
+USE_QUEUE = 'false'
 
 # Images binding for image transformations (Cloudflare Images)
 [images]
@@ -36,17 +39,16 @@ binding = "CACHE_KV"
 # Your KV namespace ID (get from: wrangler kv namespace list)
 id = "<your-kv-namespace-id>"
 
-# Queue for async R2 deletion
-[[queues.producers]]
-# Your queue name
-queue = "<your-queue-name>"
-binding = "DELETE_QUEUE"
-
-[[queues.consumers]]
-# Same queue name as above
-queue = "<your-queue-name>"
-max_batch_size = 10
-max_batch_timeout = 5
+# (Optional) Queue for async R2 deletion - only needed if USE_QUEUE = 'true'
+# Requires Cloudflare Workers Paid plan
+# [[queues.producers]]
+# queue = "<your-queue-name>"
+# binding = "DELETE_QUEUE"
+#
+# [[queues.consumers]]
+# queue = "<your-queue-name>"
+# max_batch_size = 10
+# max_batch_timeout = 5
 
 # Cron Triggers - cleanup expired images every hour
 [triggers]

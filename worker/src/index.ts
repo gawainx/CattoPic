@@ -136,10 +136,11 @@ async function scheduledHandler(
     for (const image of expiredImages) {
       try {
         // Delete files from R2
-        const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
-        const keysToDelete = Array.from(new Set([image.paths.original, image.paths.webp, image.paths.avif].filter(isNonEmptyString)));
-
-        await storage.deleteMany(keysToDelete);
+        await storage.deleteImageFiles({
+          original: image.paths.original,
+          webp: image.paths.webp || undefined,
+          avif: image.paths.avif || undefined,
+        });
 
         // Delete metadata from D1
         await metadata.deleteImage(image.id);

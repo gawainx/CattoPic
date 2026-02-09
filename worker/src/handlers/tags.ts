@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import type { Env } from '../types';
 import { MetadataService } from '../services/metadata';
+import { StorageService } from '../services/storage';
 import { CacheService, CacheKeys, CACHE_TTL } from '../services/cache';
 import { successResponse, errorResponse } from '../utils/response';
 import { sanitizeTagName } from '../utils/validation';
@@ -113,7 +114,7 @@ export async function renameTagHandler(c: Context<{ Bindings: Env }>): Promise<R
 }
 
 // DELETE /api/tags/:name - Delete tag and associated images
-// D1 删除和缓存失效是同步的，R2 文件删除通过 Queue 异步处理
+// D1 删除和缓存失效是同步的，R2 文件删除根据 USE_QUEUE 配置走 Queue 异步或同步处理
 export async function deleteTagHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   try {
     const name = normalizeTagRouteParam(c.req.param('name'));
@@ -161,24 +162,31 @@ export async function deleteTagHandler(c: Context<{ Bindings: Env }>): Promise<R
       throw err;
     }
 
-    // 4. 异步删除 R2 文件（通过 Queue 后台处理）
+    // 4. 删除 R2 文件
     if (imagePaths.length > 0) {
-      // Avoid large queue payloads by chunking
-      const chunkSize = 50;
-      for (let i = 0; i < imagePaths.length; i += chunkSize) {
-        const chunk = imagePaths.slice(i, i + chunkSize);
-        try {
-          await c.env.DELETE_QUEUE.send({
-            type: 'delete_tag_images',
-            tagName: name,
-            imagePaths: chunk,
-          });
-        } catch (err) {
-          console.error(`[deleteTag] queue send failed: name=${name} chunk=${i}-${i + chunk.length - 1}`, err);
-          throw err;
+      if (c.env.USE_QUEUE === 'true' && c.env.DELETE_QUEUE) {
+        // Async via Queue (chunked)
+        const chunkSize = 50;
+        for (let i = 0; i < imagePaths.length; i += chunkSize) {
+          const chunk = imagePaths.slice(i, i + chunkSize);
+          try {
+            await c.env.DELETE_QUEUE.send({
+              type: 'delete_tag_images',
+              tagName: name,
+              imagePaths: chunk,
+            });
+          } catch (err) {
+            console.error(`[deleteTag] queue send failed: name=${name} chunk=${i}-${i + chunk.length - 1}`, err);
+            throw err;
+          }
         }
+        console.log(`[deleteTag] queued R2 deletions: name=${name} chunks=${Math.ceil(imagePaths.length / chunkSize)}`);
+      } else {
+        // Sync direct R2 deletion
+        const storage = new StorageService(c.env.R2_BUCKET);
+        await Promise.all(imagePaths.map(img => storage.deleteImageFiles(img.paths)));
+        console.log(`[deleteTag] sync R2 deletions completed: name=${name} count=${imagePaths.length}`);
       }
-      console.log(`[deleteTag] queued R2 deletions: name=${name} chunks=${Math.ceil(imagePaths.length / chunkSize)}`);
     }
 
     return successResponse({

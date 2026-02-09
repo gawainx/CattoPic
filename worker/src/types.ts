@@ -70,7 +70,8 @@ export interface Env {
   ENVIRONMENT: string;
   R2_PUBLIC_URL: string;
   IMAGES?: ImagesBinding;
-  DELETE_QUEUE: Queue<QueueMessage>;
+  DELETE_QUEUE?: Queue<QueueMessage>;
+  USE_QUEUE?: string;
 }
 
 // D1 row type for images table

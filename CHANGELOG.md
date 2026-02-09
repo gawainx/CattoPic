@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Optional Cloudflare Queues** - R2 file deletion no longer requires Cloudflare Queues. Set `USE_QUEUE = 'true'` in wrangler.toml to use async queue-based deletion, or `'false'` for synchronous deletion (no paid Queue feature required).
 - **ZIP Batch Upload** - Upload images in bulk via ZIP archive
   - Browser-side extraction using JSZip
   - Batch processing (50 images per batch) to prevent memory overflow

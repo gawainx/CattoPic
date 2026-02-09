@@ -1,3 +1,5 @@
+import type { ImagePaths } from '../types/queue';
+
 // R2 Storage Service
 export class StorageService {
   constructor(private bucket: R2Bucket) {}
@@ -28,6 +30,12 @@ export class StorageService {
   async exists(key: string): Promise<boolean> {
     const head = await this.bucket.head(key);
     return head !== null;
+  }
+
+  async deleteImageFiles(paths: ImagePaths): Promise<void> {
+    const isNonEmptyString = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
+    const keys = Array.from(new Set([paths.original, paths.webp, paths.avif].filter(isNonEmptyString)));
+    await this.deleteMany(keys);
   }
 
   // Generate storage paths for an image
