@@ -73,7 +73,7 @@ flowchart TB
 | **Storage** | Cloudflare R2 | Store original and converted images (WebP/AVIF) |
 | **Database** | Cloudflare D1 | Image metadata, tags, API keys (SQLite) |
 | **Cache** | Cloudflare KV | Response caching, reduce D1 queries |
-| **Queue** | Cloudflare Queues | Async file deletion, batch processing |
+| **Queue** | Cloudflare Queues (optional) | Async file deletion, batch processing |
 | **Images** | Cloudflare Images | On-the-fly format conversion and optimization |
 | **Cron** | Cron Triggers | Scheduled cleanup of expired images |
 
@@ -131,7 +131,8 @@ pnpm wrangler d1 create CattoPic-D1
 pnpm wrangler kv namespace create CACHE_KV
 # Note the id from output
 
-# Create Queue
+# (Optional) Create Queue - only needed if USE_QUEUE = 'true'
+# Requires Cloudflare Workers Paid plan
 pnpm wrangler queues create cattopic-delete-queue
 
 # Initialize database schema
@@ -149,6 +150,9 @@ Edit `wrangler.toml` with your resource IDs:
 ```toml
 [vars]
 R2_PUBLIC_URL = 'https://your-r2-domain.com'
+# Set to 'true' to use Cloudflare Queues for async R2 deletion
+# Set to 'false' or remove for synchronous deletion (no Queue required)
+USE_QUEUE = 'false'
 
 [[r2_buckets]]
 bucket_name = 'cattopic-r2'
@@ -160,11 +164,12 @@ database_id = '<your-database-id>'
 [[kv_namespaces]]
 id = "<your-kv-id>"
 
-[[queues.producers]]
-queue = "cattopic-delete-queue"
-
-[[queues.consumers]]
-queue = "cattopic-delete-queue"
+# (Optional) Only needed if USE_QUEUE = 'true'
+# [[queues.producers]]
+# queue = "cattopic-delete-queue"
+#
+# [[queues.consumers]]
+# queue = "cattopic-delete-queue"
 ```
 
 ### 4. Deploy Worker

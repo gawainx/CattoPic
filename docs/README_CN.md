@@ -73,7 +73,7 @@ flowchart TB
 | **存储** | Cloudflare R2 | 存储原始图片和转换后的图片（WebP/AVIF） |
 | **数据库** | Cloudflare D1 | 图片元数据、标签、API 密钥（SQLite） |
 | **缓存** | Cloudflare KV | 响应缓存，减少 D1 查询 |
-| **队列** | Cloudflare Queues | 异步文件删除、批量处理 |
+| **队列** | Cloudflare Queues（可选） | 异步文件删除、批量处理 |
 | **图片处理** | Cloudflare Images | 实时格式转换和优化 |
 | **定时任务** | Cron Triggers | 定时清理过期图片 |
 
@@ -131,7 +131,8 @@ pnpm wrangler d1 create CattoPic-D1
 pnpm wrangler kv namespace create CACHE_KV
 # 记录输出中的 id
 
-# 创建队列
+# （可选）创建队列 - 仅在 USE_QUEUE = 'true' 时需要
+# 需要 Cloudflare Workers 付费计划
 pnpm wrangler queues create cattopic-delete-queue
 
 # 初始化数据库表结构
@@ -149,6 +150,9 @@ cp wrangler.example.toml wrangler.toml
 ```toml
 [vars]
 R2_PUBLIC_URL = 'https://your-r2-domain.com'
+# 设置为 'true' 启用 Cloudflare Queues 异步删除 R2 文件
+# 设置为 'false' 或不设置则使用同步删除（无需 Queue）
+USE_QUEUE = 'false'
 
 [[r2_buckets]]
 bucket_name = 'cattopic-r2'
@@ -160,11 +164,12 @@ database_id = '<你的数据库ID>'
 [[kv_namespaces]]
 id = "<你的KV-ID>"
 
-[[queues.producers]]
-queue = "cattopic-delete-queue"
-
-[[queues.consumers]]
-queue = "cattopic-delete-queue"
+# （可选）仅在 USE_QUEUE = 'true' 时需要
+# [[queues.producers]]
+# queue = "cattopic-delete-queue"
+#
+# [[queues.consumers]]
+# queue = "cattopic-delete-queue"
 ```
 
 ### 4. 部署 Worker
