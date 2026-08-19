@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Update deployment guidance with the configured R2 custom-domain and Vercel handoff steps.
 - API base URL resolution now uses a shared runtime `/api/config` helper for requests, API key validation, and URL construction.
 - Expired image cleanup now records durable R2 deletion jobs and runs file deletion in the background, with retry support from Cron/manual cleanup.
 - Worker deployment workflow now uses pnpm 10.24.0 to match the Worker package manager and lockfile generation.
