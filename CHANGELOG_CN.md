@@ -20,7 +20,7 @@
 
 ### 变更
 
-- 更新部署说明，补充已配置 R2 自定义域名、GitHub 仓库状态和 Vercel 交接步骤。
+- 更新部署说明，补充已配置 R2 自定义域名、GitHub 仓库状态、Vercel 交接步骤和实际的可选图片转换入口。
 - API Base URL 解析改为统一复用运行时 `/api/config` helper，覆盖普通请求、API Key 校验和 URL 拼接。
 - 过期图片清理会先写入持久化 R2 删除任务，再在后台删除文件，并支持 Cron/手动清理重试。
 - Worker 部署 workflow 改用 pnpm 10.24.0，与 Worker package manager 和 lockfile 生成版本保持一致。
