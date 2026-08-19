@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "config:worker": "node scripts/generate-worker-config.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

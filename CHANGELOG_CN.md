@@ -8,6 +8,7 @@
 
 ### 新增
 
+- **单文件部署配置** - 新增由 `.env.local` 驱动的 Worker 配置生成流程，统一 Vercel 与 Cloudflare 的部署参数。
 - **持久化 R2 删除任务** - 新增 D1 `deletion_jobs` 重试表，图片元数据可以立即删除，R2 清理失败后仍可由 Queue/Cron/手动清理恢复。
 - **Cloudflare Queues 可选化** - R2 文件删除不再强制依赖 Cloudflare Queues。在 wrangler.toml 中设置 `USE_QUEUE = 'true'` 使用异步队列删除，设置为 `'false'` 则使用同步删除（无需付费 Queue 功能）。
 - **ZIP 批量上传** - 支持通过 ZIP 压缩包批量上传图片
