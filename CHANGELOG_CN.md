@@ -64,5 +64,6 @@
 
 ### 安全
 
+- 将初始管理员 API Key 保存到仅当前用户可读且被 Git 忽略的本地密钥文件。
 - 更新存在安全风险的传递依赖 lockfile 条目：`ajv`、`brace-expansion`、`flatted`、`minimatch`、`picomatch`、`postcss` 以及 Worker 侧的 `undici`。
 - 收紧标签清洗规则，避免标签管理相关接口出现意外字符输入。

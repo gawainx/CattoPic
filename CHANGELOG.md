@@ -64,5 +64,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- Store the initial admin API key in a Git-ignored, owner-readable local credential file.
 - Update vulnerable transitive dependency lockfile entries for `ajv`, `brace-expansion`, `flatted`, `minimatch`, `picomatch`, `postcss`, and Worker-side `undici`.
 - Tighten tag sanitization to avoid unexpected characters in tag management endpoints.
