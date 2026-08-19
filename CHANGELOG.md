@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **Single-file deployment configuration** - Add `.env.local`-driven Worker configuration generation for Vercel and Cloudflare deployments.
+- **Single-file deployment configuration** - Add `.env.local`-driven Worker configuration generation for Vercel and Cloudflare deployments, with automatic R2, D1, and KV provisioning.
 - **Durable R2 deletion jobs** - Add a D1-backed `deletion_jobs` retry table so image metadata can be removed immediately while failed R2 cleanup remains recoverable by Queue/Cron/manual cleanup.
 - **Optional Cloudflare Queues** - R2 file deletion no longer requires Cloudflare Queues. Set `USE_QUEUE = 'true'` in wrangler.toml to use async queue-based deletion, or `'false'` for synchronous deletion (no paid Queue feature required).
 - **ZIP Batch Upload** - Upload images in bulk via ZIP archive

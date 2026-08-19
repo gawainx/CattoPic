@@ -7,13 +7,9 @@ const rootDirectory = process.cwd();
 const envPath = resolve(rootDirectory, '.env.local');
 const workerConfigPath = resolve(rootDirectory, 'worker/wrangler.toml');
 const values = parse(await readFile(envPath));
+const existingConfig = await readFile(workerConfigPath, 'utf8').catch(() => '');
 const requiredKeys = [
   'CATTOPIC_WORKER_NAME',
-  'CATTOPIC_R2_PUBLIC_URL',
-  'CATTOPIC_R2_BUCKET_NAME',
-  'CATTOPIC_D1_DATABASE_NAME',
-  'CATTOPIC_D1_DATABASE_ID',
-  'CATTOPIC_KV_NAMESPACE_ID',
 ];
 const missingKeys = requiredKeys.filter((key) => !values[key] || values[key].startsWith('replace-with-'));
 
@@ -32,14 +28,14 @@ const useQueue = values.CATTOPIC_USE_QUEUE === 'true';
 const queueConfiguration = useQueue
   ? `\n[[queues.producers]]\nqueue = ${tomlValue(`${values.CATTOPIC_WORKER_NAME}-delete-queue`)}\nbinding = "DELETE_QUEUE"\n\n[[queues.consumers]]\nqueue = ${tomlValue(`${values.CATTOPIC_WORKER_NAME}-delete-queue`)}\nmax_batch_size = 10\nmax_batch_timeout = 5\n`
   : '';
-const config = `name = ${tomlValue(values.CATTOPIC_WORKER_NAME)}
+const generatedConfig = `name = ${tomlValue(values.CATTOPIC_WORKER_NAME)}
 main = "src/index.ts"
 compatibility_date = "2025-12-10"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
-R2_PUBLIC_URL = ${tomlValue(values.CATTOPIC_R2_PUBLIC_URL)}
+R2_PUBLIC_URL = ${tomlValue(values.CATTOPIC_R2_PUBLIC_URL || '')}
 USE_QUEUE = ${tomlValue(String(useQueue))}
 
 [images]
@@ -47,16 +43,12 @@ binding = "IMAGES"
 
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = ${tomlValue(values.CATTOPIC_R2_BUCKET_NAME)}
 
 [[d1_databases]]
 binding = "DB"
-database_name = ${tomlValue(values.CATTOPIC_D1_DATABASE_NAME)}
-database_id = ${tomlValue(values.CATTOPIC_D1_DATABASE_ID)}
 
 [[kv_namespaces]]
 binding = "CACHE_KV"
-id = ${tomlValue(values.CATTOPIC_KV_NAMESPACE_ID)}
 ${queueConfiguration}
 [triggers]
 crons = ["0 * * * *"]
@@ -72,6 +64,12 @@ head_sampling_rate = 1
 invocation_logs = true
 persist = true
 `;
+const config = existingConfig
+  ? existingConfig
+    .replace(/^name = .+$/m, `name = ${tomlValue(values.CATTOPIC_WORKER_NAME)}`)
+    .replace(/^R2_PUBLIC_URL = .+$/m, `R2_PUBLIC_URL = ${tomlValue(values.CATTOPIC_R2_PUBLIC_URL || '')}`)
+    .replace(/^USE_QUEUE = .+$/m, `USE_QUEUE = ${tomlValue(String(useQueue))}`)
+  : generatedConfig;
 
 await writeFile(workerConfigPath, config);
-console.log(`Generated ${workerConfigPath}`);
+console.log(`${existingConfig ? 'Updated' : 'Generated'} ${workerConfigPath}`);
